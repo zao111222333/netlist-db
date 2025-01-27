@@ -1,9 +1,10 @@
 # netlist-db
 
-[![pipeline](https://github.com/zao111222333/netlist-db/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/zao111222333/netlist-db/actions/workflows/build.yml)
+[![build](https://github.com/zao111222333/netlist-db/actions/workflows/build.yml/badge.svg)](https://github.com/zao111222333/netlist-db/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![netlist-db](https://shields.io/crates/v/netlist-db.svg?style=flat-square&label=crates.io)](https://crates.io/crates/netlist-db)
 [![Docs](https://docs.rs/netlist-db/badge.svg)](https://docs.rs/netlist-db)
+[![codecov](https://codecov.io/github/zao111222333/netlist-db/graph/badge.svg)](https://codecov.io/github/zao111222333/netlist-db)
 
 Concurrent/Parallel SPICE (HSPICE) parser, under building.
 
