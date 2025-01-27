@@ -14,7 +14,7 @@ Concurrent/Parallel SPICE (HSPICE) parser, under building.
 + Circular definition detection
 
 ## Example
-Download the [releases/latest/example.zip](https://github.com/zao111222333/netlist-db/releases/download/latest/example.zip), then
+Download the [releases/latest/example.zip](https://github.com/zao111222333/netlist-db/releases/latest/download/examples.zip), then
 ``` shell
 cd example
 ./parser_x86_64-unknown-linux-musl tests/top.sp
