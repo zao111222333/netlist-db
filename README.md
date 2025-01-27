@@ -33,7 +33,6 @@ cargo run --example parser --release -- tests/top.sp
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="application/xml+xhtml; charset=UTF-8"/>
-<title>stdin</title>
 </head>
 <body>
 <pre style="color:white; background-color:black">
