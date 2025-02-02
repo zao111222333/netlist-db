@@ -63,7 +63,7 @@ pub(super) fn loss_sep(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
 #[inline]
 pub(super) fn key(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
-        take_while1(|c: char| c.is_alphanumeric() || c == '_'),
+        take_while1(is_key),
         |s: LocatedSpan| s.into(),
     )(i)
 }
@@ -120,7 +120,7 @@ pub(super) fn float_unit(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
 #[inline]
 pub(super) fn key_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
     map(
-        take_while1(|c: char| c.is_alphanumeric() || c == '_'),
+        take_while1(is_key),
         |s: LocatedSpan| {
             let _s: &str = s.fragment();
             (_s, s.into())
@@ -129,11 +129,19 @@ pub(super) fn key_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
 }
 
 #[inline]
+fn is_path(c: char)->bool{c.is_alphanumeric() || !c.is_whitespace()}
+
+#[inline]
+fn is_key(c: char)->bool{c.is_alphanumeric() || c == '_'}
+fn is_name(c: char)->bool{c.is_alphanumeric() || "/_.+-*^:@".contains(c)}
+fn is_formula(c: char)->bool{c.is_alphanumeric() || "/_.+-*^:".contains(c)}
+
+#[inline]
 pub(super) fn path(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     alt((
         unquote,
         map(
-            take_while1(|c: char| c.is_alphanumeric() || !c.is_whitespace()),
+            take_while1(is_path),
             |s: LocatedSpan| s.into(),
         ),
     ))(i)
@@ -149,7 +157,7 @@ pub(super) fn path_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
     alt((
         unquote_str,
         map(
-            take_while1(|c: char| c.is_alphanumeric() || !c.is_whitespace()),
+            take_while1(is_path),
             |s: LocatedSpan| {
                 let _s: &str = s.fragment();
                 _s
@@ -159,25 +167,36 @@ pub(super) fn path_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
 }
 
 #[inline]
-pub(super) fn hierarchical_node_char(i: LocatedSpan) -> IResult<LocatedSpan, (u8, Span)> {
+pub(super) fn name_char(i: LocatedSpan) -> IResult<LocatedSpan, (u8, Span)> {
     map(
-        take_while1(|c: char| c.is_alphanumeric() || c == '_' || c == '.'),
+        take_while1(is_name),
         |s: LocatedSpan| (s.fragment().as_bytes()[0], s.into()),
     )(i)
 }
 
 #[inline]
-pub(super) fn hierarchical_node(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+pub(super) fn name(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
-        take_while1(|c: char| c.is_alphanumeric() || c == '_' || c == '.'),
+        take_while1(is_name),
         |s: LocatedSpan| s.into(),
+    )(i)
+}
+
+#[inline]
+pub(super) fn name_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
+    map(
+        take_while1(is_name),
+        |s: LocatedSpan| {
+            let _s: &str = s.fragment();
+            (_s, s.into())
+        },
     )(i)
 }
 
 #[inline]
 pub(super) fn formula(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
-        take_while1(|c: char| c.is_alphanumeric() || "/_.+-*^:".contains(c)),
+        take_while1(is_formula),
         |s: LocatedSpan| s.into(),
     )(i)
 }
@@ -242,7 +261,7 @@ pub(super) fn equal<'a, T>(
 
 #[inline]
 pub(super) fn key_value(i: LocatedSpan) -> IResult<LocatedSpan, KeyValue> {
-    map(pair(key, equal(value)), |(k, v)| KeyValue { k, v })(i)
+    map(pair(name, equal(value)), |(k, v)| KeyValue { k, v })(i)
 }
 
 #[inline]
@@ -288,7 +307,7 @@ where
 pub(super) fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, Vec<KeyValue>)> {
     map(
         pair(
-            many1(multiline_sep(hierarchical_node)),
+            many1(multiline_sep(name)),
             opt(pair(
                 equal(value),
                 many0_dummyfirst(multiline_sep(key_value)),
@@ -311,7 +330,7 @@ pub(super) fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, V
 #[inline]
 pub(super) fn instance(i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
     map(
-        tuple((hierarchical_node_char, ports_params)),
+        tuple((name_char, ports_params)),
         |((first_char, name), (ports, params))| Instance {
             name,
             instance_type: first_char.into(),
@@ -413,7 +432,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
         #[inline]
         fn file(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
             map_res(
-                tuple((multiline_sep(key_str), equal(path))),
+                tuple((multiline_sep(name_str), equal(path))),
                 |((key, _), path)| {
                     if key.to_uppercase().as_str() == "FILE" {
                         Ok(path)
@@ -426,7 +445,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
         #[inline]
         fn out(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
             map_res(
-                tuple((multiline_sep(key_str), equal(path))),
+                tuple((multiline_sep(name_str), equal(path))),
                 |((key, _), path)| {
                     if key.to_uppercase().as_str() == "OUT" {
                         Ok(path)
@@ -439,7 +458,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
         #[inline]
         fn pname_col_num(i: LocatedSpan) -> IResult<LocatedSpan, PnameColNum> {
             map_res(
-                tuple((multiline_sep(key_str), equal(integer))),
+                tuple((multiline_sep(name_str), equal(integer))),
                 |((pname_str, pname), col_num)| {
                     let binding = pname_str.to_uppercase();
                     let s = binding.as_str();
@@ -471,7 +490,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
     (i, name) = multiline_sep(key)(i)?;
     let first;
     let first_str;
-    (i, (first_str, first)) = multiline_sep(key_str)(i)?;
+    (i, (first_str, first)) = multiline_sep(name_str)(i)?;
     match first_str.to_uppercase().as_str() {
         "MER" => {
             return data_files(i).and_then(|(i, data_files)| {
@@ -525,7 +544,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
             Err(_) => {
                 let param;
                 let param_str;
-                (i, (param_str, param)) = multiline_sep(key_str)(i)?;
+                (i, (param_str, param)) = multiline_sep(name_str)(i)?;
                 if param_str.to_uppercase().as_str() == "DATAFORM" {
                     return map(
                         tuple((many1(multiline_sep(value)), space_newline, enddata)),
@@ -560,7 +579,7 @@ pub(super) fn subckt<'a>(
     map(
         tuple((
             space1,
-            hierarchical_node,
+            name,
             ports_params,
             space_newline,
             ast_subckt,
@@ -726,7 +745,7 @@ mod test {
         assert_eq!(1.233e-6, float_unit(span("1.233u ")).unwrap().1);
         assert_ctx!(key(span("iw_ww ")), "iw_ww");
         assert_ctx!(key(span("iw.ww ")), "iw");
-        assert_ctx!(hierarchical_node(span("iw.ww ")), "iw.ww");
+        assert_ctx!(name(span("iw.ww ")), "iw.ww");
         assert_ctx!(formula(span("8.00000000e-01+2")), "8.00000000e-01+2");
         assert_ctx!(unquote(span("'8.00000000e-01 + 2'")), "8.00000000e-01 + 2");
         // assert_kv!(
