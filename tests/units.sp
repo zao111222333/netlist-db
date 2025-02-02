@@ -4,7 +4,7 @@
 + mega=1meg
 + kilo=1k
 + mil=1mil
-+ micr?o=1u
++ micro=1u
 + nano=1n
 + pico=1p
 + femto=1f

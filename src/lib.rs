@@ -1,3 +1,4 @@
+extern crate alloc;
 mod _impl;
 #[cfg(test)]
 mod _test_utils;

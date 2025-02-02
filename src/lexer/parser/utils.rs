@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take, take_till, take_until, take_while, take_while1},
-    character::complete::char,
+    character::complete::{char, digit1},
     combinator::{map, map_res, opt},
     error::ErrorKind,
     multi::{many0, many1},
@@ -20,24 +20,24 @@ use super::{
 };
 use crate::{
     file::{EndReason, FileId, LocatedSpan, Pos, Span},
-    lexer::{ParseErrorInner, Value, AST},
+    lexer::{Data, DataFile, DataFiles, DataValues, ParseErrorInner, PnameColNum, Value, AST},
 };
 
 #[inline]
-fn space(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
+pub(super) fn space(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
     take_while(|c: char| matches!(c, '\t' | '\r' | ' '))(i)
 }
 #[inline]
-fn space1(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
+pub(super) fn space1(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
     take_while1(|c: char| matches!(c, '\t' | '\r' | ' '))(i)
 }
 #[inline]
-fn space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
+pub(super) fn space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
     take_while(|c: char| matches!(c, '\t' | '\r' | ' ' | '\n'))(i)
 }
 
 #[inline]
-fn multiline_sep<'a, T>(
+pub(super) fn multiline_sep<'a, T>(
     f: fn(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T>,
 ) -> impl FnMut(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T> {
     alt((
@@ -50,7 +50,7 @@ fn multiline_sep<'a, T>(
 }
 
 #[inline]
-fn loss_sep(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
+pub(super) fn loss_sep(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
     alt((
         map(
             tuple((comment_space_newline, char('+'), space)),
@@ -61,7 +61,7 @@ fn loss_sep(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
 }
 
 #[inline]
-fn key(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+pub(super) fn key(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
         take_while1(|c: char| c.is_alphanumeric() || c == '_'),
         |s: LocatedSpan| s.into(),
@@ -101,7 +101,7 @@ fn unit(i: LocatedSpan) -> IResult<LocatedSpan, Unit> {
 }
 
 #[inline]
-fn _float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
+pub(super) fn _float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
     match fast_float2::parse_partial(i) {
         Ok((f, pos)) => Ok((i.slice(pos..), f)),
         Err(_) => Err(nom::Err::Error(nom::error::Error::new(i, ErrorKind::Float))),
@@ -109,7 +109,7 @@ fn _float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
 }
 
 #[inline]
-fn float_unit(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
+pub(super) fn float_unit(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
     map(pair(_float, opt(unit)), |(f, u)| match u {
         Some(Unit::Factor(u)) => f * u,
         Some(Unit::DB) => 10.0_f64.powf(f / 20.0),
@@ -118,7 +118,7 @@ fn float_unit(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
 }
 
 #[inline]
-fn key_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
+pub(super) fn key_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
     map(
         take_while1(|c: char| c.is_alphanumeric() || c == '_'),
         |s: LocatedSpan| {
@@ -129,7 +129,37 @@ fn key_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
 }
 
 #[inline]
-fn hierarchical_node_char(i: LocatedSpan) -> IResult<LocatedSpan, (u8, Span)> {
+pub(super) fn path(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+    alt((
+        unquote,
+        map(
+            take_while1(|c: char| c.is_alphanumeric() || !c.is_whitespace()),
+            |s: LocatedSpan| s.into(),
+        ),
+    ))(i)
+}
+
+#[inline]
+pub(super) fn integer(i: LocatedSpan) -> IResult<LocatedSpan, usize> {
+    map_res(digit1, |s: LocatedSpan| s.parse())(i)
+}
+
+#[inline]
+pub(super) fn path_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
+    alt((
+        unquote_str,
+        map(
+            take_while1(|c: char| c.is_alphanumeric() || !c.is_whitespace()),
+            |s: LocatedSpan| {
+                let _s: &str = s.fragment();
+                _s
+            },
+        ),
+    ))(i)
+}
+
+#[inline]
+pub(super) fn hierarchical_node_char(i: LocatedSpan) -> IResult<LocatedSpan, (u8, Span)> {
     map(
         take_while1(|c: char| c.is_alphanumeric() || c == '_' || c == '.'),
         |s: LocatedSpan| (s.fragment().as_bytes()[0], s.into()),
@@ -137,7 +167,7 @@ fn hierarchical_node_char(i: LocatedSpan) -> IResult<LocatedSpan, (u8, Span)> {
 }
 
 #[inline]
-fn hierarchical_node(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+pub(super) fn hierarchical_node(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
         take_while1(|c: char| c.is_alphanumeric() || c == '_' || c == '.'),
         |s: LocatedSpan| s.into(),
@@ -145,7 +175,7 @@ fn hierarchical_node(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
 }
 
 #[inline]
-fn formula(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+pub(super) fn formula(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
         take_while1(|c: char| c.is_alphanumeric() || "/_.+-*^:".contains(c)),
         |s: LocatedSpan| s.into(),
@@ -153,7 +183,7 @@ fn formula(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
 }
 
 #[inline]
-fn unquote(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+pub(super) fn unquote(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
         delimited(char('\''), take_till(|c| c == '\''), take(1_usize)),
         |s: LocatedSpan| s.into(),
@@ -161,7 +191,7 @@ fn unquote(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
 }
 
 #[inline]
-fn unquote_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
+pub(super) fn unquote_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
     map(
         delimited(char('\''), take_till(|c| c == '\''), take(1_usize)),
         |s: LocatedSpan| {
@@ -172,40 +202,56 @@ fn unquote_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
 }
 
 #[inline]
-fn comment(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
+pub(super) fn comment(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
     delimited(tag("*"), take_till(|c| c == '\n'), take(1_usize))(i)
 }
 
 #[inline]
-fn comment_space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
+pub(super) fn comment_space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
     preceded(many0(pair(space_newline, comment)), space_newline)(i)
 }
 
 #[inline]
-fn value(i: LocatedSpan) -> IResult<LocatedSpan, Value> {
-    alt((
-        map(float_unit, Value::Num),
-        map(alt((unquote, formula)), Value::Expr),
-    ))(i)
+pub(super) fn value(i: LocatedSpan) -> IResult<LocatedSpan, Value> {
+    match unquote(i) {
+        Ok((i, s)) => return Ok((i, Value::Expr(s))),
+        Err(_) => {}
+    }
+    match (float_unit(i), formula(i)) {
+        (Ok((i_num, num)), Ok((i_formula, formula))) => {
+            // when the len of rest of formula is less than num
+            // means there is a non-quote expression, like `2+2`
+            if i_formula.len() < i_num.len() {
+                Ok((i_formula, Value::Expr(formula)))
+            } else {
+                Ok((i_num, Value::Num(num)))
+            }
+        }
+        (Ok((i_num, num)), Err(_)) => Ok((i_num, Value::Num(num))),
+        (Err(_), Ok((i_formula, formula))) => Ok((i_formula, Value::Expr(formula))),
+        (Err(e), Err(_)) => Err(e),
+    }
 }
 
 #[inline]
-fn equal_value(i: LocatedSpan) -> IResult<LocatedSpan, Value> {
-    map(tuple((space, char('='), space, value)), |(_, _, _, v)| v)(i)
+pub(super) fn equal<'a, T>(
+    f: fn(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T>,
+) -> impl FnMut(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T> {
+    map(tuple((space, char('='), space, f)), |(_, _, _, v)| v)
 }
 
 #[inline]
-fn key_value(i: LocatedSpan) -> IResult<LocatedSpan, KeyValue> {
-    map(pair(key, equal_value), |(k, v)| KeyValue { k, v })(i)
+pub(super) fn key_value(i: LocatedSpan) -> IResult<LocatedSpan, KeyValue> {
+    map(pair(key, equal(value)), |(k, v)| KeyValue { k, v })(i)
 }
 
 #[inline]
-fn token(i: LocatedSpan) -> IResult<LocatedSpan, Token> {
+pub(super) fn token(i: LocatedSpan) -> IResult<LocatedSpan, Token> {
     alt((map(key_value, Token::KV), map(value, Token::Value)))(i)
 }
 
 #[cfg(test)]
-fn span(s: &str) -> LocatedSpan {
+pub(super) fn span(s: &str) -> LocatedSpan {
     LocatedSpan::new(s)
 }
 
@@ -239,12 +285,12 @@ where
 }
 
 #[inline]
-fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, Vec<KeyValue>)> {
+pub(super) fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, Vec<KeyValue>)> {
     map(
         pair(
             many1(multiline_sep(hierarchical_node)),
             opt(pair(
-                equal_value,
+                equal(value),
                 many0_dummyfirst(multiline_sep(key_value)),
             )),
         ),
@@ -263,7 +309,7 @@ fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, Vec<KeyValue
 }
 
 #[inline]
-fn instance(i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
+pub(super) fn instance(i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
     map(
         tuple((hierarchical_node_char, ports_params)),
         |((first_char, name), (ports, params))| Instance {
@@ -282,7 +328,7 @@ fn instance(i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
 /// + [DEV distribution value]...)
 /// ```
 #[inline]
-fn model(i: LocatedSpan) -> IResult<LocatedSpan, Model> {
+pub(super) fn model(i: LocatedSpan) -> IResult<LocatedSpan, Model> {
     map(
         tuple((
             multiline_sep(key),
@@ -335,11 +381,11 @@ impl InputLength for EndLib {
 }
 
 #[inline]
-fn lib(i: LocatedSpan) -> IResult<LocatedSpan, Option<(&str, String)>> {
+pub(super) fn lib(i: LocatedSpan) -> IResult<LocatedSpan, Option<(&str, String)>> {
     alt((
         // include lib section
         map(
-            tuple((unquote_str, space1, key_str)),
+            tuple((path_str, space1, key_str)),
             |(path_str, _, (section_str, _))| Some((path_str, section_str.to_lowercase())),
         ),
         // skip to `.endl`
@@ -350,7 +396,159 @@ fn lib(i: LocatedSpan) -> IResult<LocatedSpan, Option<(&str, String)>> {
     ))(i)
 }
 #[inline]
-fn subckt<'a>(
+pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
+    #[inline]
+    fn enddata(i: LocatedSpan) -> IResult<LocatedSpan, ()> {
+        map_res(pair(char('.'), key_str), |(_, (key, _))| {
+            if key.to_uppercase().as_str() == "ENDDATA" {
+                Ok(())
+            } else {
+                // TODO: error information?
+                Err(())
+            }
+        })(i)
+    }
+    #[inline]
+    fn data_files(i: LocatedSpan) -> IResult<LocatedSpan, DataFiles> {
+        #[inline]
+        fn file(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+            map_res(
+                tuple((multiline_sep(key_str), equal(path))),
+                |((key, _), path)| {
+                    if key.to_uppercase().as_str() == "FILE" {
+                        Ok(path)
+                    } else {
+                        Err(())
+                    }
+                },
+            )(i)
+        }
+        #[inline]
+        fn out(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+            map_res(
+                tuple((multiline_sep(key_str), equal(path))),
+                |((key, _), path)| {
+                    if key.to_uppercase().as_str() == "OUT" {
+                        Ok(path)
+                    } else {
+                        Err(())
+                    }
+                },
+            )(i)
+        }
+        #[inline]
+        fn pname_col_num(i: LocatedSpan) -> IResult<LocatedSpan, PnameColNum> {
+            map_res(
+                tuple((multiline_sep(key_str), equal(integer))),
+                |((pname_str, pname), col_num)| {
+                    let binding = pname_str.to_uppercase();
+                    let s = binding.as_str();
+                    if s != "FILE" && s != "OUT" {
+                        Ok(PnameColNum { pname, col_num })
+                    } else {
+                        Err(())
+                    }
+                },
+            )(i)
+        }
+        map(
+            tuple((
+                many1(map(
+                    pair(file, many1(pname_col_num)),
+                    |(file, pname_col_num)| DataFile {
+                        file,
+                        pname_col_num,
+                    },
+                )),
+                opt(out),
+                space_newline,
+                enddata,
+            )),
+            |(files, out, _, _)| DataFiles { files, out },
+        )(i)
+    }
+    let name;
+    (i, name) = multiline_sep(key)(i)?;
+    let first;
+    let first_str;
+    (i, (first_str, first)) = multiline_sep(key_str)(i)?;
+    match first_str.to_uppercase().as_str() {
+        "MER" => {
+            return data_files(i).and_then(|(i, data_files)| {
+                Ok((
+                    i,
+                    Data {
+                        name,
+                        values: DataValues::MER(data_files),
+                    },
+                ))
+            })
+        }
+        "LAM" => {
+            return data_files(i).and_then(|(i, data_files)| {
+                Ok((
+                    i,
+                    Data {
+                        name,
+                        values: DataValues::LAM(data_files),
+                    },
+                ))
+            })
+        }
+        _ => {}
+    }
+    let mut params = vec![first];
+    loop {
+        match multiline_sep(float_unit)(i) {
+            Ok((_i, first_n)) => {
+                return map(
+                    tuple((
+                        many0_dummyfirst(multiline_sep(float_unit)),
+                        space_newline,
+                        enddata,
+                    )),
+                    |(mut values, _, _)| {
+                        values[0] = first_n;
+                        values
+                    },
+                )(_i)
+                .and_then(|(i, values)| {
+                    Ok((
+                        i,
+                        Data {
+                            name,
+                            values: DataValues::InlineNum { params, values },
+                        },
+                    ))
+                });
+            }
+            Err(_) => {
+                let param;
+                let param_str;
+                (i, (param_str, param)) = multiline_sep(key_str)(i)?;
+                if param_str.to_uppercase().as_str() == "DATAFORM" {
+                    return map(
+                        tuple((many1(multiline_sep(value)), space_newline, enddata)),
+                        |(values, _, _)| values,
+                    )(i)
+                    .and_then(|(i, values)| {
+                        Ok((
+                            i,
+                            Data {
+                                name,
+                                values: DataValues::InlineExpr { params, values },
+                            },
+                        ))
+                    });
+                } else {
+                    params.push(param);
+                }
+            }
+        }
+    }
+}
+#[inline]
+pub(super) fn subckt<'a>(
     i: LocatedSpan<'a>,
     loaded: &IndexMap<FileId, Option<Pos>>,
     manager: &Arc<ParseManager>,
@@ -426,7 +624,7 @@ pub(super) fn local_ast<'a>(
                     }
                     "inc" | "include" => {
                         let file_name;
-                        (i, (_, file_name)) = pair(space1, unquote_str)(i)?;
+                        (i, (_, file_name)) = pair(space1, path_str)(i)?;
                         return Ok((
                             i,
                             (
@@ -447,6 +645,11 @@ pub(super) fn local_ast<'a>(
                         let _subckt;
                         (i, _subckt) = subckt(i, loaded, manager, work_dir)?;
                         ast.subckt.push(_subckt);
+                    }
+                    "data" => {
+                        let _data;
+                        (i, _data) = data(i)?;
+                        ast.data.push(_data);
                     }
                     "option" => {
                         let option;
@@ -538,6 +741,7 @@ mod test {
         //     "a",
         //     "8.00000000e-01 + 2"
         // );
+        crate::text_diff("'2+2'", value(span("2+2")).unwrap().1.to_string().as_str());
         crate::text_diff(
             "R1 node1 node2 var1='key1'",
             instance(span("R1 node1 node2 var1=key1"))
@@ -559,12 +763,12 @@ mod test {
         let loaded = IndexMap::new();
         crate::text_diff(
             r#"
-.model nch_mac NMOS
+.MODEL nch_mac NMOS
 + level=2 version=4.5
-.subckt INV0SR_12TH40 I ZN VDD VSS
+.SUBCKT INV0SR_12TH40 I ZN VDD VSS
 XX0 ZN I VSS VPW NHVT11LL_CKT W=0.00000031 L=0.00000004
 XX3 ZN I VDD VNW PHVT11LL_CKT W=0.00000027 L=0.00000004
-.ends INV0SR_12TH40
+.ENDS INV0SR_12TH40
 R1 node1 node2 var1='key1' var2='key2'
 R2 node1 node2 var1='key1' var2='key2'
 .mode 'nch_mac' 'nmos' level=2"#,
@@ -594,12 +798,12 @@ XX3 ZN I VDD VNW PHVT11LL_CKT W=270.00n L=40.00n
         );
         crate::text_diff(
             r#"
-.model nch_mac NMOS
+.MODEL nch_mac NMOS
 + level=2 version=4.5
-.subckt INV0SR_12TH40 I ZN VDD VSS
+.SUBCKT INV0SR_12TH40 I ZN VDD VSS
 XX0 ZN I VSS VPW NHVT11LL_CKT W=0.00000031 L=0.00000004
 XX3 ZN I VDD VNW PHVT11LL_CKT W=0.00000027 L=0.00000004
-.ends INV0SR_12TH40
+.ENDS INV0SR_12TH40
 R1 node1 node2 var1='key1' var2='key2'
 R2 node1 node2 var1='key1' var2='key2'
 .mode 'nch_mac' 'nmos' level=2"#,
@@ -630,7 +834,86 @@ XX3 ZN I VDD VNW PHVT11LL_CKT W=270.00n L=40.00n
             .to_string()
             .as_str(),
         );
+        crate::text_diff(
+            r#"
+.DATA SWEEP
++ var1 var2
++ 1 2
++ 2 4
+.ENDDATA"#,
+            local_ast(
+                span(
+                    r#".data SWEEP
+                    + var1 var2
+                    + 1    2
+                    + 2    4
+                    .enddata
+        "#,
+                ),
+                &loaded,
+                &manager,
+                &work_dir,
+            )
+            .unwrap()
+            .1
+             .0
+            .to_string()
+            .as_str(),
+        );
+        crate::text_diff(
+            r#"
+.DATA SWEEP
++ var1 var2 DATAFORM
++ 1 '2+2'
++ 2 4
+.ENDDATA"#,
+            local_ast(
+                span(
+                    r#".data SWEEP
+                    + var1 var2 DATAFORM
+                    + 1 2+2
+                    + 2 4
+                    .enddata
+        "#,
+                ),
+                &loaded,
+                &manager,
+                &work_dir,
+            )
+            .unwrap()
+            .1
+             .0
+            .to_string()
+            .as_str(),
+        );
+        crate::text_diff(
+            r#"
+.DATA inputdata MER
++ FILE='file1' p1=1 p2=3 p3=4
++ FILE='file2' p1=1
++ FILE='file3' p1=1
+.ENDDATA"#,
+            local_ast(
+                span(
+                    r#".DATA inputdata MER
+                    + FILE='file1' p1=1 p2=3 p3=4
+                    + FILE='file2' p1=1
+                    + FILE='file3' p1=1
+                 .ENDDATA
+        "#,
+                ),
+                &loaded,
+                &manager,
+                &work_dir,
+            )
+            .unwrap()
+            .1
+             .0
+            .to_string()
+            .as_str(),
+        );
     }
+
     #[test]
     fn libmatch() {
         println!("{:?}", lib(span("some .EndL \nlines")));

@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-
 use crate::{
     file::{FileId, ParsedId, Span},
     lexer::{self, GeneralCmd, InstanceType, LocalAST, Segment},
 };
+use alloc::borrow::Cow;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Parsed {
@@ -27,10 +27,10 @@ pub trait Builder<'s> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Value<'s> {
     Num(f64),
-    Expr(&'s str),
+    Expr(Cow<'s, str>),
 }
 
 impl<'s> Builder<'s> for lexer::Value {
@@ -38,23 +38,31 @@ impl<'s> Builder<'s> for lexer::Value {
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
-            lexer::Value::Num(float) => Value::Num(*float),
+            lexer::Value::Num(float) => Value::Num(float.build(file)),
             lexer::Value::Expr(expr) => Value::Expr(expr.build(file)),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+impl<'s> Builder<'s> for f64 {
+    type Out = f64;
+    #[inline]
+    fn build(&self, _file: &'s str) -> Self::Out {
+        *self
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct KeyValue<'s> {
-    pub k: &'s str,
+    pub k: Cow<'s, str>,
     pub v: Value<'s>,
 }
 
 impl<'s> Builder<'s> for Span {
-    type Out = &'s str;
+    type Out = Cow<'s, str>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        &file[self]
+        Cow::Borrowed(&file[self])
     }
 }
 
@@ -77,7 +85,7 @@ impl<'s> Builder<'s> for lexer::KeyValue {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Token<'s> {
     KV(KeyValue<'s>),
     Value(Value<'s>),
@@ -102,9 +110,9 @@ impl<'s> Builder<'s> for lexer::Token {
 /// Do NOT support `.include` / `.lib` in `.subckt`
 #[derive(Debug, Clone)]
 pub struct Subckt<'s> {
-    pub name: &'s str,
+    pub name: Cow<'s, str>,
     /// subckt/model name is the last arg
-    pub ports: Vec<&'s str>,
+    pub ports: Vec<Cow<'s, str>>,
     pub params: Vec<KeyValue<'s>>,
     pub ast: AST<'s>,
 }
@@ -114,10 +122,10 @@ pub struct Subckt<'s> {
 /// ```
 #[derive(Debug, Clone)]
 pub struct Instance<'s> {
-    pub name: &'s str,
+    pub name: Cow<'s, str>,
     pub instance_type: InstanceType,
     /// subckt/model name is the last arg
-    pub ports: Vec<&'s str>,
+    pub ports: Vec<Cow<'s, str>>,
     /// (fisrt, rest)
     pub params: Vec<KeyValue<'s>>,
 }
@@ -154,7 +162,7 @@ impl<'s> Builder<'s> for lexer::General {
 
 #[derive(Debug, Clone)]
 pub struct Unknwon<'s> {
-    pub cmd: &'s str,
+    pub cmd: Cow<'s, str>,
     pub tokens: Vec<Token<'s>>,
 }
 
@@ -171,7 +179,7 @@ impl<'s> Builder<'s> for lexer::Unknwon {
 
 #[derive(Debug, Clone)]
 pub struct Model<'s> {
-    pub name: &'s str,
+    pub name: Cow<'s, str>,
     pub model_type: ModelType<'s>,
     pub params: Vec<KeyValue<'s>>,
 }
@@ -188,8 +196,60 @@ impl<'s> Builder<'s> for lexer::Model {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Data<'s> {
+    pub name: Cow<'s, str>,
+    pub values: DataValues<'s>,
+}
+#[derive(Debug, Clone)]
+pub enum DataValues<'s> {
+    InlineExpr {
+        params: Vec<Cow<'s, str>>,
+        values: Vec<Value<'s>>,
+    },
+    InlineNum {
+        params: Vec<Cow<'s, str>>,
+        values: Vec<f64>,
+    },
+    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/data.htm
+    /// Concatenated (series merging) data files to use.
+    MER(),
+    /// Column-laminated (parallel merging) data files to use.
+    LAM(),
+}
+
+impl<'s> Builder<'s> for lexer::Data {
+    type Out = Data<'s>;
+    #[inline]
+    fn build(&self, file: &'s str) -> Self::Out {
+        Data {
+            name: self.name.build(file),
+            values: self.values.build(file),
+        }
+    }
+}
+
+impl<'s> Builder<'s> for lexer::DataValues {
+    type Out = DataValues<'s>;
+    #[inline]
+    fn build(&self, file: &'s str) -> Self::Out {
+        match self {
+            lexer::DataValues::InlineExpr { params, values } => DataValues::InlineExpr {
+                params: params.build(file),
+                values: values.build(file),
+            },
+            lexer::DataValues::InlineNum { params, values } => DataValues::InlineNum {
+                params: params.build(file),
+                values: values.build(file),
+            },
+            lexer::DataValues::MER(data_files) => todo!(),
+            lexer::DataValues::LAM(data_files) => todo!(),
+        }
+    }
+}
+
 #[expect(clippy::upper_case_acronyms)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum ModelType<'s> {
     /// operational amplifier model
     AMP,
@@ -223,7 +283,7 @@ pub enum ModelType<'s> {
     W,
     /// S-parameter
     S,
-    Unknown(&'s str),
+    Unknown(Cow<'s, str>),
 }
 
 impl<'s> Builder<'s> for lexer::ModelType {
@@ -261,6 +321,7 @@ pub struct AST<'s> {
     pub param: Vec<KeyValue<'s>>,
     pub option: Vec<Token<'s>>,
     pub general: Vec<General<'s>>,
+    pub data: Vec<Data<'s>>,
     pub unknwon: Vec<Unknwon<'s>>,
 }
 
@@ -320,6 +381,8 @@ impl lexer::AST {
                 .extend(lexer::Token::vec_iter(&local_ast.option, file));
             ast.general
                 .extend(lexer::General::vec_iter(&local_ast.general, file));
+            ast.data
+                .extend(lexer::Data::vec_iter(&local_ast.data, file));
             ast.unknwon
                 .extend(lexer::Unknwon::vec_iter(&local_ast.unknwon, file));
             for e in &local_ast.errors {

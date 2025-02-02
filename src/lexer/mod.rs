@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod _test_impl;
 pub mod parser;
+use anstyle::Style;
 use indexmap::IndexMap;
 use nom::error::ErrorKind;
 
@@ -68,6 +69,45 @@ pub struct Instance {
 }
 
 #[derive(Debug, Clone)]
+pub struct Data {
+    pub name: Span,
+    pub values: DataValues,
+}
+#[derive(Debug, Clone)]
+pub enum DataValues {
+    InlineExpr {
+        params: Vec<Span>,
+        values: Vec<Value>,
+    },
+    InlineNum {
+        params: Vec<Span>,
+        values: Vec<f64>,
+    },
+    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/data.htm
+    /// Concatenated (series merging) data files to use.
+    MER(DataFiles),
+    /// Column-laminated (parallel merging) data files to use.
+    LAM(DataFiles),
+}
+
+#[derive(Debug, Clone)]
+pub struct DataFile {
+    pub file: Span,
+    pub pname_col_num: Vec<PnameColNum>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PnameColNum {
+    pub pname: Span,
+    pub col_num: usize,
+}
+#[derive(Debug, Clone)]
+pub struct DataFiles {
+    pub files: Vec<DataFile>,
+    pub out: Option<Span>,
+}
+
+#[derive(Debug, Clone)]
 pub struct General {
     pub cmd: GeneralCmd,
     pub tokens: Vec<Token>,
@@ -94,6 +134,7 @@ pub struct LocalAST {
     pub model: Vec<Model>,
     pub param: Vec<KeyValue>,
     pub option: Vec<Token>,
+    pub data: Vec<Data>,
     pub general: Vec<General>,
     pub unknwon: Vec<Unknwon>,
     pub errors: Vec<ParseError>,
@@ -106,6 +147,7 @@ impl LocalAST {
             && self.model.is_empty()
             && self.param.is_empty()
             && self.option.is_empty()
+            && self.data.is_empty()
             && self.general.is_empty()
             && self.unknwon.is_empty()
             && self.errors.is_empty()
@@ -151,10 +193,32 @@ impl ParseErrorInner {
         ParseError { pos, err: self }
     }
 }
-
-const IS_TTY: LazyCell<bool> = LazyCell::new(|| {
+#[derive(Debug, Clone, Copy)]
+struct Styles {
+    msg: Style,
+    typ: Style,
+    err: Style,
+}
+const STYLES: LazyCell<Styles> = LazyCell::new(|| {
+    use anstyle::{AnsiColor, Color};
     use std::io::IsTerminal;
-    std::io::stdout().is_terminal()
+    if std::io::stdout().is_terminal() {
+        Styles {
+            msg: Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta))),
+            typ: Style::new()
+                .fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta)))
+                .bold(),
+            err: Style::new()
+                .fg_color(Some(AnsiColor::BrightRed.into()))
+                .bold(),
+        }
+    } else {
+        Styles {
+            msg: Style::new(),
+            typ: Style::new(),
+            err: Style::new(),
+        }
+    }
 });
 
 #[derive(Debug)]
@@ -175,35 +239,21 @@ impl ParseError {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 use crate::builder::Builder;
-                use anstyle::{AnsiColor, Color, Style};
-                let (msg_style, typ_style, err_style) = if *IS_TTY {
-                    (
-                        Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta))),
-                        Style::new()
-                            .fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta)))
-                            .bold(),
-                        Style::new()
-                            .fg_color(Some(AnsiColor::BrightRed.into()))
-                            .bold(),
-                    )
-                } else {
-                    (Style::new(), Style::new(), Style::new())
-                };
-
+                let styles: Styles = *STYLES;
                 write!(
                     f,
                     "\nFile {}\"{}\"{}",
-                    msg_style.render(),
+                    styles.msg.render(),
                     self.file_id.path().display(),
-                    msg_style.render_reset()
+                    styles.msg.render_reset()
                 )?;
                 if let Some(pos) = self.err.pos {
                     write!(
                         f,
                         ", line {}{}{}",
-                        msg_style.render(),
+                        styles.msg.render(),
                         pos.line_num,
-                        msg_style.render_reset()
+                        styles.msg.render_reset()
                     )?;
                     let span = unsafe {
                         LocatedSpan::new_from_raw_offset(
@@ -218,7 +268,7 @@ impl ParseError {
                         for _ in 0..span.get_column() - 1 {
                             write!(f, " ")?;
                         }
-                        write!(f, "{}<-{}", err_style.render(), err_style.render_reset())?;
+                        write!(f, "{}<-{}", styles.err.render(), styles.err.render_reset())?;
                     }
                 }
                 writeln!(f)?;
@@ -227,36 +277,36 @@ impl ParseError {
                         writeln!(
                             f,
                             "{}Error{}: {}{error}{}",
-                            typ_style.render(),
-                            typ_style.render_reset(),
-                            msg_style.render(),
-                            msg_style.render_reset()
+                            styles.typ.render(),
+                            styles.typ.render_reset(),
+                            styles.msg.render(),
+                            styles.msg.render_reset()
                         )
                     }
                     ParseErrorInner::NoLibSection { path, section } => {
                         writeln!(
                             f,
                             "{}Error{}: {}Can NOT find section `{section}` in file \"{}\"{}",
-                            typ_style.render(),
-                            typ_style.render_reset(),
-                            msg_style.render(),
+                            styles.typ.render(),
+                            styles.typ.render_reset(),
+                            styles.msg.render(),
                             path.display(),
-                            msg_style.render_reset()
+                            styles.msg.render_reset()
                         )
                     }
                     ParseErrorInner::Nom(e) => {
                         write!(
                             f,
                             "{}ParserError{}",
-                            typ_style.render(),
-                            typ_style.render_reset(),
+                            styles.typ.render(),
+                            styles.typ.render_reset(),
                         )?;
                         if let Some(e) = e {
                             writeln!(
                                 f,
                                 ": {}{e:?}{}",
-                                msg_style.render(),
-                                msg_style.render_reset()
+                                styles.msg.render(),
+                                styles.msg.render_reset()
                             )
                         } else {
                             writeln!(f)
@@ -266,11 +316,11 @@ impl ParseError {
                         writeln!(
                             f,
                             "{}SyntaxError{}: {}Unknwon command `{}`{}",
-                            typ_style.render(),
-                            typ_style.render_reset(),
-                            msg_style.render(),
+                            styles.typ.render(),
+                            styles.typ.render_reset(),
+                            styles.msg.render(),
                             span.build(self.file),
-                            msg_style.render_reset()
+                            styles.msg.render_reset()
                         )
                     }
                     ParseErrorInner::CircularDefinition(index_set, idx) => {
@@ -304,20 +354,20 @@ impl ParseError {
                         writeln!(
                             f,
                             "{}CircularDefinition{}: {}Detect circular definition in {}{}",
-                            typ_style.render(),
-                            typ_style.render_reset(),
-                            msg_style.render(),
+                            styles.typ.render(),
+                            styles.typ.render_reset(),
+                            styles.msg.render(),
                             FileDisplay::new(circular_file),
-                            msg_style.render_reset()
+                            styles.msg.render_reset()
                         )?;
                         for (i, file) in index_set.iter().enumerate() {
                             if *idx == i {
                                 writeln!(
                                     f,
                                     "{} * {}{}\n     ↓",
-                                    err_style.render(),
+                                    styles.err.render(),
                                     FileDisplay::new(file),
-                                    err_style.render_reset()
+                                    styles.err.render_reset()
                                 )?;
                             } else {
                                 writeln!(f, "   {}\n     ↓", FileDisplay::new(file))?;
@@ -326,9 +376,9 @@ impl ParseError {
                         writeln!(
                             f,
                             "{} * {}{}",
-                            err_style.render(),
+                            styles.err.render(),
                             FileDisplay::new(circular_file),
-                            err_style.render_reset()
+                            styles.err.render_reset()
                         )
                     }
                 }
@@ -469,4 +519,9 @@ pub enum GeneralCmd {
     Ic,
     /// `.ic` initial condition
     Meas,
+}
+impl fmt::Display for GeneralCmd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
 }
