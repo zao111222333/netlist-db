@@ -1,4 +1,8 @@
-use std::{path::Path, sync::Arc};
+use std::{
+    iter::Empty,
+    path::Path,
+    sync::{Arc, LazyLock},
+};
 
 use indexmap::IndexMap;
 use nom::{
@@ -8,8 +12,8 @@ use nom::{
     combinator::{map, map_res, opt},
     error::ErrorKind,
     multi::{many0, many1},
-    sequence::{delimited, pair, preceded, tuple},
-    FindSubstring, IResult, InputLength, Parser, Slice,
+    sequence::{delimited, preceded},
+    FindSubstring, IResult, Input, Parser,
 };
 use regex::Regex;
 
@@ -25,25 +29,25 @@ use crate::{
 
 #[inline]
 pub(super) fn space(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    take_while(|c: char| matches!(c, '\t' | '\r' | ' '))(i)
+    take_while(|c: char| matches!(c, '\t' | '\r' | ' ')).parse(i)
 }
 #[inline]
 pub(super) fn space1(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    take_while1(|c: char| matches!(c, '\t' | '\r' | ' '))(i)
+    take_while1(|c: char| matches!(c, '\t' | '\r' | ' ')).parse(i)
 }
 #[inline]
 pub(super) fn space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    take_while(|c: char| matches!(c, '\t' | '\r' | ' ' | '\n'))(i)
+    take_while(|c: char| matches!(c, '\t' | '\r' | ' ' | '\n')).parse(i)
 }
 
 #[inline]
 pub(super) fn multiline_sep<'a, T>(
     f: fn(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T>,
-) -> impl FnMut(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T> {
+) -> impl MyParser<'a, T> {
     alt((
         preceded(space1, f),
         map(
-            tuple((comment_space_newline, char('+'), space, f)),
+            (comment_space_newline, char('+'), space, f),
             |(_, _, _, t)| t,
         ),
     ))
@@ -52,20 +56,15 @@ pub(super) fn multiline_sep<'a, T>(
 #[inline]
 pub(super) fn loss_sep(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
     alt((
-        map(
-            tuple((comment_space_newline, char('+'), space)),
-            |(_, _, s)| s,
-        ),
+        map((comment_space_newline, char('+'), space), |(_, _, s)| s),
         space,
-    ))(i)
+    ))
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn key(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
-    map(
-        take_while1(is_key),
-        |s: LocatedSpan| s.into(),
-    )(i)
+    map(take_while1(is_key), |s: LocatedSpan| s.into()).parse(i)
 }
 
 enum Unit {
@@ -96,109 +95,105 @@ fn unit(i: LocatedSpan) -> IResult<LocatedSpan, Unit> {
         "HR" => Ok(Unit::Factor(3600.0)),
         "DAY" => Ok(Unit::Factor(86400.0)),
         "YR" => Ok(Unit::Factor(31536000.0)),
-        _ => Err(nom::Err::Error(nom::error::Error::new(i, ErrorKind::Float))),
-    })(i)
+        _ => Err(ErrorKind::Float),
+    })
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn _float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
     match fast_float2::parse_partial(i) {
-        Ok((f, pos)) => Ok((i.slice(pos..), f)),
+        Ok((f, pos)) => Ok((i.take_from(pos), f)),
         Err(_) => Err(nom::Err::Error(nom::error::Error::new(i, ErrorKind::Float))),
     }
 }
 
 #[inline]
 pub(super) fn float_unit(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
-    map(pair(_float, opt(unit)), |(f, u)| match u {
+    map((_float, opt(unit)), |(f, u)| match u {
         Some(Unit::Factor(u)) => f * u,
         Some(Unit::DB) => 10.0_f64.powf(f / 20.0),
         None => f,
-    })(i)
+    })
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn key_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
-    map(
-        take_while1(is_key),
-        |s: LocatedSpan| {
-            let _s: &str = s.fragment();
-            (_s, s.into())
-        },
-    )(i)
+    map(take_while1(is_key), |s: LocatedSpan| {
+        let _s: &str = s.fragment();
+        (_s, s.into())
+    })
+    .parse(i)
 }
 
 #[inline]
-fn is_path(c: char)->bool{c.is_alphanumeric() || !c.is_whitespace()}
+fn is_path(c: char) -> bool {
+    c.is_alphanumeric() || !c.is_whitespace()
+}
 
 #[inline]
-fn is_key(c: char)->bool{c.is_alphanumeric() || c == '_'}
-fn is_name(c: char)->bool{c.is_alphanumeric() || "/_.+-*^:@".contains(c)}
-fn is_formula(c: char)->bool{c.is_alphanumeric() || "/_.+-*^:".contains(c)}
+fn is_key(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+fn is_name(c: char) -> bool {
+    c.is_alphanumeric() || "/_.+-*^:@".contains(c)
+}
+fn is_formula(c: char) -> bool {
+    c.is_alphanumeric() || "/_.+-*^:".contains(c)
+}
 
 #[inline]
 pub(super) fn path(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     alt((
         unquote,
-        map(
-            take_while1(is_path),
-            |s: LocatedSpan| s.into(),
-        ),
-    ))(i)
+        map(take_while1(is_path), |s: LocatedSpan| s.into()),
+    ))
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn integer(i: LocatedSpan) -> IResult<LocatedSpan, usize> {
-    map_res(digit1, |s: LocatedSpan| s.parse())(i)
+    map_res(digit1, |s: LocatedSpan| s.parse()).parse(i)
 }
 
 #[inline]
 pub(super) fn path_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
     alt((
         unquote_str,
-        map(
-            take_while1(is_path),
-            |s: LocatedSpan| {
-                let _s: &str = s.fragment();
-                _s
-            },
-        ),
-    ))(i)
+        map(take_while1(is_path), |s: LocatedSpan| {
+            let _s: &str = s.fragment();
+            _s
+        }),
+    ))
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn name_char(i: LocatedSpan) -> IResult<LocatedSpan, (u8, Span)> {
-    map(
-        take_while1(is_name),
-        |s: LocatedSpan| (s.fragment().as_bytes()[0], s.into()),
-    )(i)
+    map(take_while1(is_name), |s: LocatedSpan| {
+        (s.fragment().as_bytes()[0], s.into())
+    })
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn name(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
-    map(
-        take_while1(is_name),
-        |s: LocatedSpan| s.into(),
-    )(i)
+    map(take_while1(is_name), |s: LocatedSpan| s.into()).parse(i)
 }
 
 #[inline]
 pub(super) fn name_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
-    map(
-        take_while1(is_name),
-        |s: LocatedSpan| {
-            let _s: &str = s.fragment();
-            (_s, s.into())
-        },
-    )(i)
+    map(take_while1(is_name), |s: LocatedSpan| {
+        let _s: &str = s.fragment();
+        (_s, s.into())
+    })
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn formula(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
-    map(
-        take_while1(is_formula),
-        |s: LocatedSpan| s.into(),
-    )(i)
+    map(take_while1(is_formula), |s: LocatedSpan| s.into()).parse(i)
 }
 
 #[inline]
@@ -206,7 +201,8 @@ pub(super) fn unquote(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
     map(
         delimited(char('\''), take_till(|c| c == '\''), take(1_usize)),
         |s: LocatedSpan| s.into(),
-    )(i)
+    )
+    .parse(i)
 }
 
 #[inline]
@@ -217,26 +213,26 @@ pub(super) fn unquote_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
             let _s: &str = s.fragment();
             _s
         },
-    )(i)
+    )
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn comment(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    delimited(tag("*"), take_till(|c| c == '\n'), take(1_usize))(i)
+    delimited(tag("*"), take_till(|c| c == '\n'), take(1_usize)).parse(i)
 }
 
 #[inline]
 pub(super) fn comment_space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    preceded(many0(pair(space_newline, comment)), space_newline)(i)
+    preceded(many0((space_newline, comment)), space_newline).parse(i)
 }
 
 #[inline]
 pub(super) fn value(i: LocatedSpan) -> IResult<LocatedSpan, Value> {
-    match unquote(i) {
-        Ok((i, s)) => return Ok((i, Value::Expr(s))),
-        Err(_) => {}
+    if let Ok((i, s)) = unquote.parse(i) {
+        return Ok((i, Value::Expr(s)));
     }
-    match (float_unit(i), formula(i)) {
+    match (float_unit.parse(i), formula.parse(i)) {
         (Ok((i_num, num)), Ok((i_formula, formula))) => {
             // when the len of rest of formula is less than num
             // means there is a non-quote expression, like `2+2`
@@ -252,21 +248,29 @@ pub(super) fn value(i: LocatedSpan) -> IResult<LocatedSpan, Value> {
     }
 }
 
+pub(super) trait MyParser<'a, T>:
+    Parser<LocatedSpan<'a>, Output = T, Error = nom::error::Error<LocatedSpan<'a>>>
+{
+}
+
+impl<'a, T, P> MyParser<'a, T> for P where
+    P: Parser<LocatedSpan<'a>, Output = T, Error = nom::error::Error<LocatedSpan<'a>>>
+{
+}
+
 #[inline]
-pub(super) fn equal<'a, T>(
-    f: fn(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T>,
-) -> impl FnMut(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, T> {
-    map(tuple((space, char('='), space, f)), |(_, _, _, v)| v)
+pub(super) fn equal<'a, T, F: MyParser<'a, T>>(f: F) -> impl MyParser<'a, T> {
+    map((space, char('='), space, f), |(_, _, _, v)| v)
 }
 
 #[inline]
 pub(super) fn key_value(i: LocatedSpan) -> IResult<LocatedSpan, KeyValue> {
-    map(pair(name, equal(value)), |(k, v)| KeyValue { k, v })(i)
+    map((name, equal(value)), |(k, v)| KeyValue { k, v }).parse(i)
 }
 
 #[inline]
 pub(super) fn token(i: LocatedSpan) -> IResult<LocatedSpan, Token> {
-    alt((map(key_value, Token::KV), map(value, Token::Value)))(i)
+    alt((map(key_value, Token::KV), map(value, Token::Value))).parse(i)
 }
 
 #[cfg(test)]
@@ -274,16 +278,16 @@ pub(super) fn span(s: &str) -> LocatedSpan {
     LocatedSpan::new(s)
 }
 
-pub fn many0_dummyfirst<I, O, E, F>(mut f: F) -> impl FnMut(I) -> IResult<I, Vec<O>, E>
+pub(super) fn many0_dummyfirst<'a, T, F>(
+    mut f: F,
+) -> impl FnMut(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>, Vec<T>>
 where
-    I: Clone + InputLength,
-    F: Parser<I, O, E>,
-    O: Default,
-    E: nom::error::ParseError<I>,
+    F: MyParser<'a, T>,
+    T: Default,
 {
-    move |mut i: I| {
+    move |mut i: LocatedSpan| {
         let mut acc = Vec::with_capacity(4);
-        acc.push(O::default());
+        acc.push(T::default());
         loop {
             let len = i.input_len();
             match f.parse(i.clone()) {
@@ -292,7 +296,7 @@ where
                 Ok((i1, o)) => {
                     // infinite loop check: the parser must always consume
                     if i1.input_len() == len {
-                        return Err(nom::Err::Error(E::from_error_kind(i, ErrorKind::Many0)));
+                        return Err(nom::Err::Error(nom::error::Error::new(i, ErrorKind::Many0)));
                     }
 
                     i = i1;
@@ -306,12 +310,9 @@ where
 #[inline]
 pub(super) fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, Vec<KeyValue>)> {
     map(
-        pair(
+        (
             many1(multiline_sep(name)),
-            opt(pair(
-                equal(value),
-                many0_dummyfirst(multiline_sep(key_value)),
-            )),
+            opt((equal(value), many0_dummyfirst(multiline_sep(key_value)))),
         ),
         |(mut ports, _params)| match _params {
             Some((first_value, mut params)) => {
@@ -324,20 +325,22 @@ pub(super) fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, V
             }
             None => (ports, Vec::new()),
         },
-    )(i)
+    )
+    .parse(i)
 }
 
 #[inline]
 pub(super) fn instance(i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
     map(
-        tuple((name_char, ports_params)),
+        (name_char, ports_params),
         |((first_char, name), (ports, params))| Instance {
             name,
             instance_type: first_char.into(),
             ports,
             params,
         },
-    )(i)
+    )
+    .parse(i)
 }
 
 /// ``` spice
@@ -349,20 +352,20 @@ pub(super) fn instance(i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
 #[inline]
 pub(super) fn model(i: LocatedSpan) -> IResult<LocatedSpan, Model> {
     map(
-        tuple((
+        (
             multiline_sep(key),
             multiline_sep(key_str),
             alt((
                 many1(multiline_sep(key_value)),
                 map(
-                    tuple((
+                    (
                         loss_sep,
                         char('('),
                         loss_sep,
-                        opt(pair(key_value, many0_dummyfirst(multiline_sep(key_value)))),
+                        opt((key_value, many0_dummyfirst(multiline_sep(key_value)))),
                         loss_sep,
                         char(')'),
-                    )),
+                    ),
                     |(_, _, _, v, _, _)| {
                         if let Some((first, mut vec)) = v {
                             vec[0] = first;
@@ -373,29 +376,68 @@ pub(super) fn model(i: LocatedSpan) -> IResult<LocatedSpan, Model> {
                     },
                 ),
             )),
-        )),
+        ),
         |(name, model_type_ctx, params)| Model {
             name,
             model_type: model_type_ctx.into(),
             params,
         },
-    )(i)
+    )
+    .parse(i)
 }
 
 #[derive(Debug, Clone, Copy)]
 struct EndLib;
+impl EndLib {
+    const RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("(?i)\\.endl").unwrap());
+    const LEN: usize = 5;
+}
 impl FindSubstring<EndLib> for LocatedSpan<'_> {
     #[inline]
     fn find_substring(&self, _: EndLib) -> Option<usize> {
-        use std::sync::LazyLock;
-        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("(?i)\\.endl").unwrap());
-        RE.find(self.fragment()).map(|m| m.start())
+        EndLib::RE.find(self.fragment()).map(|m| m.start())
     }
 }
-impl InputLength for EndLib {
-    #[inline]
+impl Input for EndLib {
+    type Item = ();
+
+    type Iter = Empty<()>;
+
+    type IterIndices = Empty<(usize, ())>;
+
     fn input_len(&self) -> usize {
-        5
+        unreachable!()
+    }
+
+    fn take(&self, _: usize) -> Self {
+        unreachable!()
+    }
+
+    fn take_from(&self, _: usize) -> Self {
+        unreachable!()
+    }
+
+    fn take_split(&self, _: usize) -> (Self, Self) {
+        unreachable!()
+    }
+
+    fn position<P>(&self, _: P) -> Option<usize>
+    where
+        P: Fn(Self::Item) -> bool,
+    {
+        unreachable!()
+    }
+
+    fn iter_elements(&self) -> Self::Iter {
+        unreachable!()
+    }
+
+    fn iter_indices(&self) -> Self::IterIndices {
+        unreachable!()
+    }
+
+    fn slice_index(&self, _: usize) -> Result<usize, nom::Needed> {
+        unreachable!()
     }
 }
 
@@ -404,35 +446,37 @@ pub(super) fn lib(i: LocatedSpan) -> IResult<LocatedSpan, Option<(&str, String)>
     alt((
         // include lib section
         map(
-            tuple((path_str, space1, key_str)),
+            (path_str, space1, key_str),
             |(path_str, _, (section_str, _))| Some((path_str, section_str.to_lowercase())),
         ),
         // skip to `.endl`
         map(
-            tuple((take_until(EndLib), take(5usize), opt(pair(space1, key)))),
+            (take_until(EndLib), take(EndLib::LEN), opt((space1, key))),
             |_| None,
         ),
-    ))(i)
+    ))
+    .parse(i)
 }
 #[inline]
 pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
     #[inline]
     fn enddata(i: LocatedSpan) -> IResult<LocatedSpan, ()> {
-        map_res(pair(char('.'), key_str), |(_, (key, _))| {
+        map_res((char('.'), key_str), |(_, (key, _))| {
             if key.to_uppercase().as_str() == "ENDDATA" {
                 Ok(())
             } else {
                 // TODO: error information?
                 Err(())
             }
-        })(i)
+        })
+        .parse(i)
     }
     #[inline]
     fn data_files(i: LocatedSpan) -> IResult<LocatedSpan, DataFiles> {
         #[inline]
         fn file(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
             map_res(
-                tuple((multiline_sep(name_str), equal(path))),
+                (multiline_sep(name_str), equal(path)),
                 |((key, _), path)| {
                     if key.to_uppercase().as_str() == "FILE" {
                         Ok(path)
@@ -440,12 +484,13 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                         Err(())
                     }
                 },
-            )(i)
+            )
+            .parse(i)
         }
         #[inline]
         fn out(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
             map_res(
-                tuple((multiline_sep(name_str), equal(path))),
+                (multiline_sep(name_str), equal(path)),
                 |((key, _), path)| {
                     if key.to_uppercase().as_str() == "OUT" {
                         Ok(path)
@@ -453,12 +498,13 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                         Err(())
                     }
                 },
-            )(i)
+            )
+            .parse(i)
         }
         #[inline]
         fn pname_col_num(i: LocatedSpan) -> IResult<LocatedSpan, PnameColNum> {
             map_res(
-                tuple((multiline_sep(name_str), equal(integer))),
+                (multiline_sep(name_str), equal(integer)),
                 |((pname_str, pname), col_num)| {
                     let binding = pname_str.to_uppercase();
                     let s = binding.as_str();
@@ -468,12 +514,13 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                         Err(())
                     }
                 },
-            )(i)
+            )
+            .parse(i)
         }
         map(
-            tuple((
+            (
                 many1(map(
-                    pair(file, many1(pname_col_num)),
+                    (file, many1(pname_col_num)),
                     |(file, pname_col_num)| DataFile {
                         file,
                         pname_col_num,
@@ -482,82 +529,85 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                 opt(out),
                 space_newline,
                 enddata,
-            )),
+            ),
             |(files, out, _, _)| DataFiles { files, out },
-        )(i)
+        )
+        .parse(i)
     }
     let name;
-    (i, name) = multiline_sep(key)(i)?;
+    (i, name) = multiline_sep(key).parse(i)?;
     let first;
     let first_str;
-    (i, (first_str, first)) = multiline_sep(name_str)(i)?;
+    (i, (first_str, first)) = multiline_sep(name_str).parse(i)?;
     match first_str.to_uppercase().as_str() {
         "MER" => {
-            return data_files(i).and_then(|(i, data_files)| {
-                Ok((
+            return data_files.parse(i).map(|(i, data_files)| {
+                (
                     i,
                     Data {
                         name,
                         values: DataValues::MER(data_files),
                     },
-                ))
+                )
             })
         }
         "LAM" => {
-            return data_files(i).and_then(|(i, data_files)| {
-                Ok((
+            return data_files.parse(i).map(|(i, data_files)| {
+                (
                     i,
                     Data {
                         name,
                         values: DataValues::LAM(data_files),
                     },
-                ))
+                )
             })
         }
         _ => {}
     }
     let mut params = vec![first];
     loop {
-        match multiline_sep(float_unit)(i) {
+        match multiline_sep(float_unit).parse(i) {
             Ok((_i, first_n)) => {
                 return map(
-                    tuple((
+                    (
                         many0_dummyfirst(multiline_sep(float_unit)),
                         space_newline,
                         enddata,
-                    )),
+                    ),
                     |(mut values, _, _)| {
                         values[0] = first_n;
                         values
                     },
-                )(_i)
-                .and_then(|(i, values)| {
-                    Ok((
+                )
+                .parse(_i)
+                .map(|(i, values)| {
+                    (
                         i,
                         Data {
                             name,
                             values: DataValues::InlineNum { params, values },
                         },
-                    ))
+                    )
                 });
             }
             Err(_) => {
                 let param;
                 let param_str;
-                (i, (param_str, param)) = multiline_sep(name_str)(i)?;
+                (i, (param_str, param)) = multiline_sep(name_str).parse(i)?;
                 if param_str.to_uppercase().as_str() == "DATAFORM" {
                     return map(
-                        tuple((many1(multiline_sep(value)), space_newline, enddata)),
+                        (many1(multiline_sep(value)), space_newline, enddata),
                         |(values, _, _)| values,
-                    )(i)
-                    .and_then(|(i, values)| {
-                        Ok((
+                    )
+                    .parse(i)
+                    .map(|(i, values)| {
+                        (
                             i,
                             Data {
                                 name,
                                 values: DataValues::InlineExpr { params, values },
                             },
-                        ))
+                        )
                     });
                 } else {
                     params.push(param);
@@ -577,20 +627,15 @@ pub(super) fn subckt<'a>(
         ast(manager.clone(), loaded.clone(), work_dir.to_path_buf(), i)
     };
     map(
-        tuple((
-            space1,
-            name,
-            ports_params,
-            space_newline,
-            ast_subckt,
-        )),
+        (space1, name, ports_params, space_newline, ast_subckt),
         |(_, name, (ports, params), _, ast)| Subckt {
             name,
             ports,
             params,
             ast,
         },
-    )(i)
+    )
+    .parse(i)
 }
 
 #[inline]
@@ -603,9 +648,9 @@ pub(super) fn local_ast<'a>(
     let mut ast = LocalAST::default();
     loop {
         log::trace!("\n{:?}", i.fragment());
-        (i, _) = comment_space_newline(i)?;
-        match char('.')(i) {
-            Err(nom::Err::Error(_)) => match instance(i) {
+        (i, _) = comment_space_newline.parse(i)?;
+        match char('.').parse(i) {
+            Err(nom::Err::Error(_)) => match instance.parse(i) {
                 Ok((_i, inst)) => {
                     i = _i;
                     ast.instance.push(inst);
@@ -623,11 +668,11 @@ pub(super) fn local_ast<'a>(
                 i = _i;
                 let cmd;
                 let cmd_str;
-                (i, (cmd_str, cmd)) = key_str(i)?;
+                (i, (cmd_str, cmd)) = key_str.parse(i)?;
                 match cmd_str.to_lowercase().as_str() {
                     "lib" => {
                         let lib_info;
-                        (i, (_, lib_info)) = pair(space1, lib)(i)?;
+                        (i, (_, lib_info)) = (space1, lib).parse(i)?;
                         if let Some((file_name_str, section_str)) = lib_info {
                             return Ok((
                                 i,
@@ -643,7 +688,7 @@ pub(super) fn local_ast<'a>(
                     }
                     "inc" | "include" => {
                         let file_name;
-                        (i, (_, file_name)) = pair(space1, path_str)(i)?;
+                        (i, (_, file_name)) = (space1, path_str).parse(i)?;
                         return Ok((
                             i,
                             (
@@ -657,7 +702,7 @@ pub(super) fn local_ast<'a>(
                     }
                     "model" => {
                         let _model;
-                        (i, _model) = model(i)?;
+                        (i, _model) = model.parse(i)?;
                         ast.model.push(_model);
                     }
                     "subckt" => {
@@ -667,34 +712,31 @@ pub(super) fn local_ast<'a>(
                     }
                     "data" => {
                         let _data;
-                        (i, _data) = data(i)?;
+                        (i, _data) = data.parse(i)?;
                         ast.data.push(_data);
                     }
                     "option" => {
                         let option;
-                        (i, option) = many1(multiline_sep(token))(i)?;
+                        (i, option) = many1(multiline_sep(token)).parse(i)?;
                         ast.option.extend(option);
                     }
                     "param" | "parameter" => {
                         let param;
-                        (i, param) = many1(multiline_sep(key_value))(i)?;
+                        (i, param) = many1(multiline_sep(key_value)).parse(i)?;
                         ast.param.extend(param);
                     }
                     "ends" => {
-                        (i, _) = opt(pair(space1, key))(i)?;
+                        (i, _) = opt((space1, key)).parse(i)?;
                         return Ok((i, (ast, EndReason::End)));
                     }
                     "end" => {
                         return Ok((i, (ast, EndReason::End)));
                     }
                     _ => {
-                        #[cfg(not(test))]
-                        ast.errors.push(ParseErrorInner::Unknown(cmd).record(i));
-                        #[cfg(test)]
                         ast.errors
                             .push(ParseErrorInner::Unknown(cmd.clone()).record(i));
                         let tokens;
-                        (i, tokens) = many0(multiline_sep(token))(i)?;
+                        (i, tokens) = many0(multiline_sep(token)).parse(i)?;
                         ast.unknwon.push(Unknwon { cmd, tokens })
                     }
                 }

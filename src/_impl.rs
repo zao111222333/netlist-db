@@ -71,14 +71,14 @@ impl fmt::Display for Data<'_> {
             DataValues::InlineExpr { params, values } => write!(
                 f,
                 "\n+{} DATAFORM{}",
-                InlineDispaly(&params),
-                WrapDispaly(&values, params.len())
+                InlineDispaly(params),
+                WrapDispaly(values, params.len())
             )?,
             DataValues::InlineNum { params, values } => write!(
                 f,
                 "\n+{}{}",
-                InlineDispaly(&params),
-                WrapDispaly(&values, params.len())
+                InlineDispaly(params),
+                WrapDispaly(values, params.len())
             )?,
             DataValues::MER() => todo!(),
             DataValues::LAM() => todo!(),

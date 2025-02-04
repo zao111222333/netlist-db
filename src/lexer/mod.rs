@@ -521,7 +521,7 @@ pub enum GeneralCmd {
     Meas,
 }
 impl fmt::Display for GeneralCmd {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }
 }
