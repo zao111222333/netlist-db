@@ -8,6 +8,24 @@ pub fn span(file_ctx: &str, line_offset: u32) -> LocatedSpan {
     unsafe { LocatedSpan::new_from_raw_offset(0, 1 + line_offset, file_ctx, ()) }
 }
 pub type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
+
+#[cfg(test)]
+#[derive(Debug)]
+#[cfg(test)]
+pub struct TestLocatedSpan<'a> {
+    pub offset: usize,
+    pub line: u32,
+    pub fragment: &'a str,
+}
+#[cfg(test)]
+impl PartialEq<LocatedSpan<'_>> for TestLocatedSpan<'_> {
+    fn eq(&self, other: &LocatedSpan<'_>) -> bool {
+        self.offset == other.location_offset()
+            && self.line == other.location_line()
+            && &self.fragment == other.fragment()
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(not(test), derive(Copy))]
 pub struct Span {

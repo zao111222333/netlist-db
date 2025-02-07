@@ -1,5 +1,4 @@
 use std::{
-    iter::Empty,
     path::Path,
     sync::{Arc, LazyLock},
 };
@@ -7,13 +6,13 @@ use std::{
 use indexmap::IndexMap;
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take, take_till, take_until, take_while, take_while1},
+    bytes::complete::{tag, take, take_till, take_while, take_while1},
     character::complete::{char, digit1},
     combinator::{map, map_res, opt},
     error::ErrorKind,
     multi::{many0, many1},
     sequence::{delimited, preceded},
-    FindSubstring, IResult, Input, Parser,
+    IResult, Input, Parser,
 };
 use regex::Regex;
 
@@ -386,62 +385,17 @@ pub(super) fn model(i: LocatedSpan) -> IResult<LocatedSpan, Model> {
     .parse(i)
 }
 
-#[derive(Debug, Clone, Copy)]
-struct EndLib;
-impl EndLib {
-    const RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("(?i)\\.endl").unwrap());
-    const LEN: usize = 5;
-}
-impl FindSubstring<EndLib> for LocatedSpan<'_> {
-    #[inline]
-    fn find_substring(&self, _: EndLib) -> Option<usize> {
-        EndLib::RE.find(self.fragment()).map(|m| m.start())
-    }
-}
-impl Input for EndLib {
-    type Item = ();
-
-    type Iter = Empty<()>;
-
-    type IterIndices = Empty<(usize, ())>;
-
-    fn input_len(&self) -> usize {
-        unreachable!()
-    }
-
-    fn take(&self, _: usize) -> Self {
-        unreachable!()
-    }
-
-    fn take_from(&self, _: usize) -> Self {
-        unreachable!()
-    }
-
-    fn take_split(&self, _: usize) -> (Self, Self) {
-        unreachable!()
-    }
-
-    fn position<P>(&self, _: P) -> Option<usize>
-    where
-        P: Fn(Self::Item) -> bool,
-    {
-        unreachable!()
-    }
-
-    fn iter_elements(&self) -> Self::Iter {
-        unreachable!()
-    }
-
-    fn iter_indices(&self) -> Self::IterIndices {
-        unreachable!()
-    }
-
-    fn slice_index(&self, _: usize) -> Result<usize, nom::Needed> {
-        unreachable!()
-    }
-}
-
 #[inline]
+fn endlib(i: LocatedSpan) -> IResult<LocatedSpan, ()> {
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("(?i)\\.endl").unwrap());
+    match RE.find(i.fragment()) {
+        Some(m) => Ok((i.take_from(m.end()), ())),
+        None => Err(nom::Err::Error(nom::error::Error::new(
+            i,
+            ErrorKind::RegexpCapture,
+        ))),
+    }
+}
 pub(super) fn lib(i: LocatedSpan) -> IResult<LocatedSpan, Option<(&str, String)>> {
     alt((
         // include lib section
@@ -450,10 +404,7 @@ pub(super) fn lib(i: LocatedSpan) -> IResult<LocatedSpan, Option<(&str, String)>
             |(path_str, _, (section_str, _))| Some((path_str, section_str.to_lowercase())),
         ),
         // skip to `.endl`
-        map(
-            (take_until(EndLib), take(EndLib::LEN), opt((space1, key))),
-            |_| None,
-        ),
+        map((endlib, opt((space1, key))), |_| None),
     ))
     .parse(i)
 }
@@ -754,6 +705,8 @@ mod test {
     }
     use std::path::PathBuf;
 
+    use crate::file::TestLocatedSpan;
+
     // macro_rules! assert_kv {
     //     ($i_res:expr, $k:expr, $v:expr $(,)?) => {{
     //         let kv = $i_res.unwrap().1;
@@ -782,9 +735,12 @@ mod test {
     // }
     use super::*;
     #[test]
-    fn test_key() {
+    fn test_num() {
         assert_eq!(1.233, float_unit(span("1.233 ")).unwrap().1);
         assert_eq!(1.233e-6, float_unit(span("1.233u ")).unwrap().1);
+    }
+    #[test]
+    fn test_key() {
         assert_ctx!(key(span("iw_ww ")), "iw_ww");
         assert_ctx!(key(span("iw.ww ")), "iw");
         assert_ctx!(name(span("iw.ww ")), "iw.ww");
@@ -977,9 +933,30 @@ XX3 ZN I VDD VNW PHVT11LL_CKT W=270.00n L=40.00n
 
     #[test]
     fn libmatch() {
-        println!("{:?}", lib(span("some .EndL \nlines")));
-        println!("{:?}", lib(span("some .EndL tt \nlines")));
-        println!("{:?}", lib(span("some \n .EndL lines")));
+        assert_eq!(
+            TestLocatedSpan {
+                offset: 10,
+                line: 1,
+                fragment: " \nlines"
+            },
+            lib(span("some .EndL \nlines")).unwrap().0
+        );
+        assert_eq!(
+            TestLocatedSpan {
+                offset: 13,
+                line: 1,
+                fragment: " \nlines"
+            },
+            lib(span("some .EndL tt \nlines")).unwrap().0
+        );
+        assert_eq!(
+            TestLocatedSpan {
+                offset: 12,
+                line: 2,
+                fragment: " "
+            },
+            lib(span("some \n .EndL ")).unwrap().0
+        );
         println!("{:?}", lib(span("'some' tt")));
     }
 }
