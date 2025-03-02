@@ -11,16 +11,16 @@ use nom::IResult;
 use regex::Regex;
 use utils::local_ast;
 
-use super::{ParseError, Segment, AST};
+use super::{AST, ParseError, Segment};
 use crate::{
     builder::{Files, Parsed},
-    file::{span, EndReason, FileId, FileStorage, LocatedSpan, ParsedId, Pos},
+    file::{EndReason, FileId, FileStorage, LocatedSpan, ParsedId, Pos, span},
     lexer::{LocalAST, ParseErrorInner},
 };
 
+mod instance;
 mod manager;
 mod utils;
-// mod instance;
 // mod measure;
 
 #[inline]

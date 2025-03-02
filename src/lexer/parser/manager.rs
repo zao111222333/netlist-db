@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{Mutex, oneshot};
 
 use crate::{file::FileStorage, lexer::AST};
 
@@ -66,7 +66,7 @@ impl ParseManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::time::{sleep, Duration};
+    use tokio::time::{Duration, sleep};
 
     #[tokio::test]
     async fn test_parse_manager_multiple_tasks() {

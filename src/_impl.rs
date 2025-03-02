@@ -107,17 +107,17 @@ impl<T: Display> Display for MultilineDispaly<'_, T> {
     }
 }
 
-impl fmt::Display for Instance<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{}{}",
-            self.name,
-            InlineDispaly(&self.ports),
-            InlineDispaly(&self.params)
-        )
-    }
-}
+// impl fmt::Display for Instance<'_> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(
+//             f,
+//             "{}{}{}",
+//             self.name,
+//             InlineDispaly(&self.ports),
+//             InlineDispaly(&self.params)
+//         )
+//     }
+// }
 
 impl fmt::Display for Model<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -166,7 +166,7 @@ impl fmt::Display for AST<'_> {
         }
         write!(f, "{}", MultilineDispaly(&self.model))?;
         write!(f, "{}", MultilineDispaly(&self.subckt))?;
-        write!(f, "{}", MultilineDispaly(&self.instance))?;
+        // write!(f, "{}", MultilineDispaly(&self.instance))?;
         write!(f, "{}", MultilineDispaly(&self.data))?;
         write!(f, "{}", MultilineDispaly(&self.general))?;
         write!(f, "{}", MultilineDispaly(&self.unknwon))?;

@@ -1,6 +1,6 @@
 use core::{fmt, ops::Index};
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     path::{Path, PathBuf},
 };
 
@@ -26,15 +26,14 @@ impl PartialEq<LocatedSpan<'_>> for TestLocatedSpan<'_> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-#[cfg_attr(not(test), derive(Copy))]
+#[derive(Debug, Clone, Default, Copy)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
     /// The line number of the fragment relatively to the input of the parser. It starts at line 1.
     pub line_num: u32,
-    #[cfg(test)]
-    pub ctx: String,
+    // #[cfg(test)]
+    // pub ctx: String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -158,8 +157,6 @@ impl From<LocatedSpan<'_>> for Span {
             start,
             end: start + s.fragment().len(),
             line_num: s.location_line(),
-            #[cfg(test)]
-            ctx: s.fragment().to_string(),
         }
     }
 }
@@ -179,8 +176,8 @@ impl From<LocatedSpan<'_>> for Pos {
 mod test {
     use super::*;
     use nom::{
-        bytes::complete::{tag, take_until},
         IResult,
+        bytes::complete::{tag, take_until},
     };
 
     #[derive(Debug, Default)]

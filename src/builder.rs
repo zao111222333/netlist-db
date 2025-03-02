@@ -1,6 +1,6 @@
 use crate::{
     file::{FileId, ParsedId, Span},
-    lexer::{self, GeneralCmd, InstanceType, LocalAST, Segment},
+    lexer::{self, GeneralCmd, LocalAST, Segment},
 };
 use alloc::borrow::Cow;
 use std::collections::HashMap;
@@ -117,31 +117,31 @@ pub struct Subckt<'s> {
     pub ast: AST<'s>,
 }
 
-/// ``` spice
-/// XX1 net48 D VDD VNW PHVT11LL_CKT W=0.22u L=40.00n
-/// ```
-#[derive(Debug, Clone)]
-pub struct Instance<'s> {
-    pub name: Cow<'s, str>,
-    pub instance_type: InstanceType,
-    /// subckt/model name is the last arg
-    pub ports: Vec<Cow<'s, str>>,
-    /// (fisrt, rest)
-    pub params: Vec<KeyValue<'s>>,
-}
+// /// ``` spice
+// /// XX1 net48 D VDD VNW PHVT11LL_CKT W=0.22u L=40.00n
+// /// ```
+// #[derive(Debug, Clone)]
+// pub struct Instance<'s> {
+//     pub name: Cow<'s, str>,
+//     pub instance_type: InstanceType,
+//     /// subckt/model name is the last arg
+//     pub ports: Vec<Cow<'s, str>>,
+//     /// (fisrt, rest)
+//     pub params: Vec<KeyValue<'s>>,
+// }
 
-impl<'s> Builder<'s> for lexer::Instance {
-    type Out = Instance<'s>;
-    #[inline]
-    fn build(&self, file: &'s str) -> Self::Out {
-        Instance {
-            name: self.name.build(file),
-            instance_type: self.instance_type,
-            ports: self.ports.build(file),
-            params: self.params.build(file),
-        }
-    }
-}
+// impl<'s> Builder<'s> for lexer::Instance {
+//     type Out = Instance<'s>;
+//     #[inline]
+//     fn build(&self, file: &'s str) -> Self::Out {
+//         Instance {
+//             name: self.name.build(file),
+//             instance_type: self.instance_type,
+//             ports: self.ports.build(file),
+//             params: self.params.build(file),
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone)]
 pub struct General<'s> {
@@ -316,7 +316,7 @@ impl<'s> Builder<'s> for lexer::ModelType {
 #[derive(Debug, Clone, Default)]
 pub struct AST<'s> {
     pub subckt: Vec<Subckt<'s>>,
-    pub instance: Vec<Instance<'s>>,
+    // pub instance: Vec<Instance<'s>>,
     pub model: Vec<Model<'s>>,
     pub param: Vec<KeyValue<'s>>,
     pub option: Vec<Token<'s>>,
@@ -371,8 +371,8 @@ impl lexer::AST {
                     .iter()
                     .map(|s| build_subckt(s, has_err, file, file_id, parsed_id, files, parsed)),
             );
-            ast.instance
-                .extend(lexer::Instance::vec_iter(&local_ast.instance, file));
+            // ast.instance
+            //     .extend(lexer::Instance::vec_iter(&local_ast.instance, file));
             ast.model
                 .extend(lexer::Model::vec_iter(&local_ast.model, file));
             ast.param

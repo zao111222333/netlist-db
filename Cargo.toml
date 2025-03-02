@@ -1,7 +1,7 @@
 [package]
 name = "netlist-db"
 version = "0.1.1"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 authors = ["Junzhuo <zhou@junzhuo.site>"]
 keywords = ["eda", "spice", "netlist", "database", "parser"]
@@ -30,3 +30,6 @@ anstyle = "1.0.8"
 console = "0.15"
 similar = { version = "2.7", features = ["inline"] }
 simple_logger = "5.0.0"
+
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc = "0.1.43"
