@@ -3,24 +3,43 @@ use std::fmt::Display;
 
 use super::*;
 
-struct WrapDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result>(&'a [T], F, usize);
-impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for WrapDispaly<'_, T, F> {
+struct WrapDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result, SEP: Display>(
+    &'a [T],
+    F,
+    /// line sep
+    SEP,
+    /// item sep
+    char,
+    usize,
+);
+impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result, SEP: Display> Display
+    for WrapDispaly<'_, T, F, SEP>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for ts in self.0.chunks(self.2) {
-            write!(f, "\n+")?;
-            for t in ts {
-                write!(f, " ")?;
-                self.1(t, f)?;
+        for ts in self.0.chunks(self.4) {
+            write!(f, "\n{}", self.2)?;
+            let mut iter = ts.iter();
+            if let Some(first) = iter.next() {
+                self.1(first, f)?;
+                for t in iter {
+                    write!(f, "{}", self.3)?;
+                    self.1(t, f)?;
+                }
             }
         }
         Ok(())
     }
 }
-struct InlineDispaly<'a, T: Display>(&'a [T]);
-impl<T: Display> Display for InlineDispaly<'_, T> {
+struct InlineDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result>(&'a [T], F, char);
+impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for InlineDispaly<'_, T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for t in self.0 {
-            write!(f, " {t}")?;
+        let mut iter = self.0.iter();
+        if let Some(first) = iter.next() {
+            self.1(first, f)?;
+            for t in iter {
+                write!(f, "{}", self.2)?;
+                self.1(t, f)?;
+            }
         }
         Ok(())
     }
@@ -108,17 +127,19 @@ impl fmt::Display for Data<'_> {
         match &self.values {
             DataValues::InlineExpr { params, values } => write!(
                 f,
-                "\n+{} DATAFORM{}",
-                InlineDispaly(params),
-                WrapDispaly(values, Display::fmt, params.len())
+                "\n+ {} DATAFORM{}",
+                InlineDispaly(params, Display::fmt, ' '),
+                WrapDispaly(values, Display::fmt, "+ ", ' ', params.len())
             )?,
             DataValues::InlineNum { params, values } => write!(
                 f,
-                "\n+{}{}",
-                InlineDispaly(params),
+                "\n+ {}{}",
+                InlineDispaly(params, Display::fmt, ' '),
                 WrapDispaly(
                     values,
                     |float: &f64, f: &mut fmt::Formatter<'_>| write!(f, "{}", FloatDisplay(float)),
+                    "+ ",
+                    ' ',
                     params.len()
                 )
             )?,
@@ -126,6 +147,32 @@ impl fmt::Display for Data<'_> {
             DataValues::LAM() => todo!(),
         }
         write!(f, "\n.ENDDATA")
+    }
+}
+impl fmt::Display for DataValuesCsv<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            DataValues::InlineExpr { params, values } => write!(
+                f,
+                "{}{}",
+                InlineDispaly(params, Display::fmt, ','),
+                WrapDispaly(values, Display::fmt, '\0', ',', params.len())
+            ),
+            DataValues::InlineNum { params, values } => write!(
+                f,
+                "{}{}",
+                InlineDispaly(params, Display::fmt, ','),
+                WrapDispaly(
+                    values,
+                    |float: &f64, f: &mut fmt::Formatter<'_>| write!(f, "{}", FloatDisplay(float)),
+                    '\0',
+                    ',',
+                    params.len()
+                )
+            ),
+            DataValues::MER() => todo!(),
+            DataValues::LAM() => todo!(),
+        }
     }
 }
 
@@ -151,7 +198,12 @@ impl fmt::Display for instance::InstanceCtx<'_> {
                 r#type: _,
                 ports,
                 params,
-            } => write!(f, "{}{}", InlineDispaly(ports), InlineDispaly(params)),
+            } => write!(
+                f,
+                " {} {}",
+                InlineDispaly(ports, Display::fmt, ' '),
+                InlineDispaly(params, Display::fmt, ' ')
+            ),
         }
     }
 }
@@ -160,10 +212,10 @@ impl fmt::Display for instance::Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {}{}",
-            InlineDispaly(&self.ports),
+            " {} {} {}",
+            InlineDispaly(&self.ports, Display::fmt, ' '),
             self.cktname,
-            InlineDispaly(&self.params)
+            InlineDispaly(&self.params, Display::fmt, ' ')
         )
     }
 }
@@ -183,7 +235,9 @@ impl fmt::Display for instance::Current<'_> {
 impl fmt::Display for instance::VoltageSource<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            instance::VoltageSource::Params(params) => write!(f, "{}", InlineDispaly(params)),
+            instance::VoltageSource::Params(params) => {
+                write!(f, " {}", InlineDispaly(params, Display::fmt, ' '))
+            }
             instance::VoltageSource::Value(value) => write!(f, "{value}"),
             instance::VoltageSource::PWL(pwl) => write!(f, "{pwl}"),
         }
@@ -193,7 +247,9 @@ impl fmt::Display for instance::VoltageSource<'_> {
 impl fmt::Display for instance::CurrentSource<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            instance::CurrentSource::Params(params) => write!(f, "{}", InlineDispaly(params)),
+            instance::CurrentSource::Params(params) => {
+                write!(f, " {}", InlineDispaly(params, Display::fmt, ' '))
+            }
             instance::CurrentSource::Value(value) => write!(f, "{value}"),
             instance::CurrentSource::PWL(pwl) => write!(f, "{pwl}"),
         }
@@ -208,7 +264,11 @@ impl fmt::Display for instance::TimeValuePoint<'_> {
 
 impl fmt::Display for instance::PWL<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PWL({})", WrapDispaly(&self.points, Display::fmt, 1),)
+        write!(
+            f,
+            "PWL({})",
+            WrapDispaly(&self.points, Display::fmt, "+ ", ' ', 1),
+        )
     }
 }
 
@@ -232,13 +292,13 @@ impl fmt::Display for instance::MOSFET<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} {} {}{}",
+            "{} {} {} {} {} {}",
             self.nd,
             self.ng,
             self.ns,
             OptionDispaly(&self.nb),
             self.mname,
-            InlineDispaly(&self.params)
+            InlineDispaly(&self.params, Display::fmt, ' ')
         )
     }
 }
@@ -247,13 +307,13 @@ impl fmt::Display for instance::BJT<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} {} {}{}",
+            "{} {} {} {} {} {}",
             self.nc,
             self.nb,
             self.ne,
             OptionDispaly(&self.ns),
             self.mname,
-            InlineDispaly(&self.params)
+            InlineDispaly(&self.params, Display::fmt, ' ')
         )
     }
 }
@@ -262,11 +322,11 @@ impl fmt::Display for instance::Diode<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {}{}",
+            "{} {} {} {}",
             self.nplus,
             self.nminus,
             self.mname,
-            InlineDispaly(&self.params)
+            InlineDispaly(&self.params, Display::fmt, ' ')
         )
     }
 }
@@ -278,7 +338,7 @@ impl fmt::Display for Model<'_> {
             ".MODEL {} {}{}",
             self.name,
             self.model_type,
-            WrapDispaly(&self.params, Display::fmt, 4)
+            WrapDispaly(&self.params, Display::fmt, "+ ", ' ', 4)
         )
     }
 }
@@ -287,10 +347,10 @@ impl fmt::Display for Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            ".SUBCKT {}{}{}",
+            ".SUBCKT {} {} {}",
             self.name,
-            InlineDispaly(&self.ports),
-            InlineDispaly(&self.params)
+            InlineDispaly(&self.ports, Display::fmt, ' '),
+            InlineDispaly(&self.params, Display::fmt, ' ')
         )?;
         write!(f, "{}", self.ast)?;
         write!(f, "\n.ENDS {}", self.name)
@@ -299,12 +359,22 @@ impl fmt::Display for Subckt<'_> {
 
 impl fmt::Display for Unknwon<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{}{}", self.cmd, InlineDispaly(&self.tokens))
+        write!(
+            f,
+            ".{} {}",
+            self.cmd,
+            InlineDispaly(&self.tokens, Display::fmt, ' ')
+        )
     }
 }
 impl fmt::Display for General<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{}{}", self.cmd, InlineDispaly(&self.tokens))
+        write!(
+            f,
+            ".{} {}",
+            self.cmd,
+            InlineDispaly(&self.tokens, Display::fmt, ' ')
+        )
     }
 }
 
@@ -323,12 +393,18 @@ impl fmt::Display for AST<'_> {
                             write!(f, "{}", option.0)
                         }
                     },
+                    "+ ",
+                    ' ',
                     4
                 )
             )?;
         }
         if !self.param.is_empty() {
-            write!(f, "\n.PARAM {}", WrapDispaly(&self.param, Display::fmt, 4))?;
+            write!(
+                f,
+                "\n.PARAM {}",
+                WrapDispaly(&self.param, Display::fmt, "+ ", ' ', 4)
+            )?;
         }
         write!(f, "{}", MultilineDispaly(&self.model, Display::fmt))?;
         write!(f, "{}", MultilineDispaly(&self.subckt, Display::fmt))?;

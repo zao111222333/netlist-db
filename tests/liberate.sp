@@ -88,7 +88,7 @@ VD D 0  pwl(
 
 .param Q_cap=1.5000001e-16
 VQ Q altos_25 0
-* .print tran v(Q) i(VQ)
+.print tran v(Q) i(VQ)
 C0_0 altos_25 0 Q_cap
 
 .ic v(Q) = 0.8

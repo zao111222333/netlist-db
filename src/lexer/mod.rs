@@ -98,7 +98,12 @@ pub enum DataValues<'s> {
     /// Column-laminated (parallel merging) data files to use.
     LAM(),
 }
-
+pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a DataValues<'s>);
+impl<'s> DataValues<'s> {
+    pub fn csv(&self) -> DataValuesCsv<'s, '_> {
+        DataValuesCsv(self)
+    }
+}
 #[expect(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 pub enum ModelType<'s> {
