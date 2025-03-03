@@ -1,5 +1,4 @@
 use super::Span;
-use crate::lexer;
 use alloc::borrow::Cow;
 pub trait Builder<'s> {
     type Out: 's;
@@ -53,21 +52,21 @@ impl<'s, T1: Builder<'s>, T2: Builder<'s>, T3: Builder<'s>> Builder<'s> for (T1,
 }
 
 impl<'s> Builder<'s> for super::Value {
-    type Out = lexer::Value<'s>;
+    type Out = crate::Value<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
-            super::Value::Num(float) => lexer::Value::Num(float.build(file)),
-            super::Value::Expr(expr) => lexer::Value::Expr(expr.build(file)),
+            super::Value::Num(float) => crate::Value::Num(float.build(file)),
+            super::Value::Expr(expr) => crate::Value::Expr(expr.build(file)),
         }
     }
 }
 
 impl<'s> Builder<'s> for super::KeyValue {
-    type Out = lexer::KeyValue<'s>;
+    type Out = crate::KeyValue<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::KeyValue {
+        crate::KeyValue {
             k: self.k.build(file),
             v: self.v.build(file),
         }
@@ -75,23 +74,23 @@ impl<'s> Builder<'s> for super::KeyValue {
 }
 
 impl<'s> Builder<'s> for super::Token {
-    type Out = lexer::Token<'s>;
+    type Out = crate::Token<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
-            super::Token::KV(key_value) => lexer::Token::KV(key_value.build(file)),
-            super::Token::Value(v) => lexer::Token::Value(v.build(file)),
-            super::Token::V(v) => lexer::Token::V(v.build(file)),
-            super::Token::I(v) => lexer::Token::I(v.build(file)),
+            super::Token::KV(key_value) => crate::Token::KV(key_value.build(file)),
+            super::Token::Value(v) => crate::Token::Value(v.build(file)),
+            super::Token::V(v) => crate::Token::V(v.build(file)),
+            super::Token::I(v) => crate::Token::I(v.build(file)),
         }
     }
 }
 
 impl<'s> Builder<'s> for super::instance::Instance {
-    type Out = lexer::instance::Instance<'s>;
+    type Out = crate::instance::Instance<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Instance {
+        crate::instance::Instance {
             name: self.name.build(file),
             ctx: self.ctx.build(file),
         }
@@ -99,42 +98,42 @@ impl<'s> Builder<'s> for super::instance::Instance {
 }
 
 impl<'s> Builder<'s> for super::instance::InstanceCtx {
-    type Out = lexer::instance::InstanceCtx<'s>;
+    type Out = crate::instance::InstanceCtx<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
             super::instance::InstanceCtx::Resistor(resistor) => {
-                lexer::instance::InstanceCtx::Resistor(resistor.build(file))
+                crate::instance::InstanceCtx::Resistor(resistor.build(file))
             }
             super::instance::InstanceCtx::Capacitor(capacitor) => {
-                lexer::instance::InstanceCtx::Capacitor(capacitor.build(file))
+                crate::instance::InstanceCtx::Capacitor(capacitor.build(file))
             }
             super::instance::InstanceCtx::Inductor(inductor) => {
-                lexer::instance::InstanceCtx::Inductor(inductor.build(file))
+                crate::instance::InstanceCtx::Inductor(inductor.build(file))
             }
             super::instance::InstanceCtx::Voltage(voltage) => {
-                lexer::instance::InstanceCtx::Voltage(voltage.build(file))
+                crate::instance::InstanceCtx::Voltage(voltage.build(file))
             }
             super::instance::InstanceCtx::Current(current) => {
-                lexer::instance::InstanceCtx::Current(current.build(file))
+                crate::instance::InstanceCtx::Current(current.build(file))
             }
             super::instance::InstanceCtx::MOSFET(mosfet) => {
-                lexer::instance::InstanceCtx::MOSFET(mosfet.build(file))
+                crate::instance::InstanceCtx::MOSFET(mosfet.build(file))
             }
             super::instance::InstanceCtx::BJT(bjt) => {
-                lexer::instance::InstanceCtx::BJT(bjt.build(file))
+                crate::instance::InstanceCtx::BJT(bjt.build(file))
             }
             super::instance::InstanceCtx::Diode(diode) => {
-                lexer::instance::InstanceCtx::Diode(diode.build(file))
+                crate::instance::InstanceCtx::Diode(diode.build(file))
             }
             super::instance::InstanceCtx::Subckt(subckt) => {
-                lexer::instance::InstanceCtx::Subckt(subckt.build(file))
+                crate::instance::InstanceCtx::Subckt(subckt.build(file))
             }
             super::instance::InstanceCtx::Unknown {
                 r#type,
                 ports,
                 params,
-            } => lexer::instance::InstanceCtx::Unknown {
+            } => crate::instance::InstanceCtx::Unknown {
                 r#type: *r#type,
                 ports: ports.build(file),
                 params: params.build(file),
@@ -144,10 +143,10 @@ impl<'s> Builder<'s> for super::instance::InstanceCtx {
 }
 
 impl<'s> Builder<'s> for super::instance::Resistor {
-    type Out = lexer::instance::Resistor<'s>;
+    type Out = crate::instance::Resistor<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Resistor {
+        crate::instance::Resistor {
             n1: self.n1.build(file),
             n2: self.n2.build(file),
             value: self.value.build(file),
@@ -156,10 +155,10 @@ impl<'s> Builder<'s> for super::instance::Resistor {
 }
 
 impl<'s> Builder<'s> for super::instance::Capacitor {
-    type Out = lexer::instance::Capacitor<'s>;
+    type Out = crate::instance::Capacitor<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Capacitor {
+        crate::instance::Capacitor {
             n1: self.n1.build(file),
             n2: self.n2.build(file),
             value: self.value.build(file),
@@ -168,10 +167,10 @@ impl<'s> Builder<'s> for super::instance::Capacitor {
 }
 
 impl<'s> Builder<'s> for super::instance::Voltage {
-    type Out = lexer::instance::Voltage<'s>;
+    type Out = crate::instance::Voltage<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Voltage {
+        crate::instance::Voltage {
             n1: self.n1.build(file),
             n2: self.n2.build(file),
             source: self.source.build(file),
@@ -180,10 +179,10 @@ impl<'s> Builder<'s> for super::instance::Voltage {
 }
 
 impl<'s> Builder<'s> for super::instance::Current {
-    type Out = lexer::instance::Current<'s>;
+    type Out = crate::instance::Current<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Current {
+        crate::instance::Current {
             n1: self.n1.build(file),
             n2: self.n2.build(file),
             source: self.source.build(file),
@@ -192,46 +191,46 @@ impl<'s> Builder<'s> for super::instance::Current {
 }
 
 impl<'s> Builder<'s> for super::instance::VoltageSource {
-    type Out = lexer::instance::VoltageSource<'s>;
+    type Out = crate::instance::VoltageSource<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
             super::instance::VoltageSource::Params(params) => {
-                lexer::instance::VoltageSource::Params(params.build(file))
+                crate::instance::VoltageSource::Params(params.build(file))
             }
             super::instance::VoltageSource::Value(value) => {
-                lexer::instance::VoltageSource::Value(value.build(file))
+                crate::instance::VoltageSource::Value(value.build(file))
             }
             super::instance::VoltageSource::PWL(pwl) => {
-                lexer::instance::VoltageSource::PWL(pwl.build(file))
+                crate::instance::VoltageSource::PWL(pwl.build(file))
             }
         }
     }
 }
 
 impl<'s> Builder<'s> for super::instance::CurrentSource {
-    type Out = lexer::instance::CurrentSource<'s>;
+    type Out = crate::instance::CurrentSource<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
             super::instance::CurrentSource::Params(params) => {
-                lexer::instance::CurrentSource::Params(params.build(file))
+                crate::instance::CurrentSource::Params(params.build(file))
             }
             super::instance::CurrentSource::Value(value) => {
-                lexer::instance::CurrentSource::Value(value.build(file))
+                crate::instance::CurrentSource::Value(value.build(file))
             }
             super::instance::CurrentSource::PWL(pwl) => {
-                lexer::instance::CurrentSource::PWL(pwl.build(file))
+                crate::instance::CurrentSource::PWL(pwl.build(file))
             }
         }
     }
 }
 
 impl<'s> Builder<'s> for super::instance::TimeValuePoint {
-    type Out = lexer::instance::TimeValuePoint<'s>;
+    type Out = crate::instance::TimeValuePoint<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::TimeValuePoint {
+        crate::instance::TimeValuePoint {
             time: self.time.build(file),
             value: self.value.build(file),
         }
@@ -239,10 +238,10 @@ impl<'s> Builder<'s> for super::instance::TimeValuePoint {
 }
 
 impl<'s> Builder<'s> for super::instance::PWL {
-    type Out = lexer::instance::PWL<'s>;
+    type Out = crate::instance::PWL<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::PWL {
+        crate::instance::PWL {
             points: self.points.build(file),
             repeat: self.repeat.build(file),
             rstop: self.rstop.build(file),
@@ -255,10 +254,10 @@ impl<'s> Builder<'s> for super::instance::PWL {
 }
 
 impl<'s> Builder<'s> for super::instance::Inductor {
-    type Out = lexer::instance::Inductor<'s>;
+    type Out = crate::instance::Inductor<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Inductor {
+        crate::instance::Inductor {
             n1: self.n1.build(file),
             n2: self.n2.build(file),
             value: self.value.build(file),
@@ -267,10 +266,10 @@ impl<'s> Builder<'s> for super::instance::Inductor {
 }
 
 impl<'s> Builder<'s> for super::instance::MOSFET {
-    type Out = lexer::instance::MOSFET<'s>;
+    type Out = crate::instance::MOSFET<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::MOSFET {
+        crate::instance::MOSFET {
             nd: self.nd.build(file),
             ng: self.ng.build(file),
             ns: self.ns.build(file),
@@ -282,10 +281,10 @@ impl<'s> Builder<'s> for super::instance::MOSFET {
 }
 
 impl<'s> Builder<'s> for super::instance::BJT {
-    type Out = lexer::instance::BJT<'s>;
+    type Out = crate::instance::BJT<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::BJT {
+        crate::instance::BJT {
             nc: self.nc.build(file),
             ne: self.ne.build(file),
             ns: self.ns.build(file),
@@ -297,10 +296,10 @@ impl<'s> Builder<'s> for super::instance::BJT {
 }
 
 impl<'s> Builder<'s> for super::instance::Diode {
-    type Out = lexer::instance::Diode<'s>;
+    type Out = crate::instance::Diode<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Diode {
+        crate::instance::Diode {
             nplus: self.nplus.build(file),
             nminus: self.nminus.build(file),
             mname: self.mname.build(file),
@@ -310,10 +309,10 @@ impl<'s> Builder<'s> for super::instance::Diode {
 }
 
 impl<'s> Builder<'s> for super::instance::Subckt {
-    type Out = lexer::instance::Subckt<'s>;
+    type Out = crate::instance::Subckt<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::instance::Subckt {
+        crate::instance::Subckt {
             ports: self.ports.build(file),
             cktname: self.cktname.build(file),
             params: self.params.build(file),
@@ -322,10 +321,10 @@ impl<'s> Builder<'s> for super::instance::Subckt {
 }
 
 impl<'s> Builder<'s> for super::General {
-    type Out = lexer::General<'s>;
+    type Out = crate::General<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::General {
+        crate::General {
             cmd: self.cmd,
             tokens: self.tokens.build(file),
         }
@@ -333,10 +332,10 @@ impl<'s> Builder<'s> for super::General {
 }
 
 impl<'s> Builder<'s> for super::Unknwon {
-    type Out = lexer::Unknwon<'s>;
+    type Out = crate::Unknwon<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::Unknwon {
+        crate::Unknwon {
             cmd: self.cmd.build(file),
             tokens: self.tokens.build(file),
         }
@@ -344,10 +343,10 @@ impl<'s> Builder<'s> for super::Unknwon {
 }
 
 impl<'s> Builder<'s> for super::Model {
-    type Out = lexer::Model<'s>;
+    type Out = crate::Model<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::Model {
+        crate::Model {
             name: self.name.build(file),
             model_type: self.model_type.build(file),
             params: self.params.build(file),
@@ -356,10 +355,10 @@ impl<'s> Builder<'s> for super::Model {
 }
 
 impl<'s> Builder<'s> for super::Data {
-    type Out = lexer::Data<'s>;
+    type Out = crate::Data<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
-        lexer::Data {
+        crate::Data {
             name: self.name.build(file),
             values: self.values.build(file),
         }
@@ -367,15 +366,15 @@ impl<'s> Builder<'s> for super::Data {
 }
 
 impl<'s> Builder<'s> for super::DataValues {
-    type Out = lexer::DataValues<'s>;
+    type Out = crate::DataValues<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
-            super::DataValues::InlineExpr { params, values } => lexer::DataValues::InlineExpr {
+            super::DataValues::InlineExpr { params, values } => crate::DataValues::InlineExpr {
                 params: params.build(file),
                 values: values.build(file),
             },
-            super::DataValues::InlineNum { params, values } => lexer::DataValues::InlineNum {
+            super::DataValues::InlineNum { params, values } => crate::DataValues::InlineNum {
                 params: params.build(file),
                 values: values.build(file),
             },
@@ -386,27 +385,27 @@ impl<'s> Builder<'s> for super::DataValues {
 }
 
 impl<'s> Builder<'s> for super::ModelType {
-    type Out = lexer::ModelType<'s>;
+    type Out = crate::ModelType<'s>;
     #[inline]
     fn build(&self, file: &'s str) -> Self::Out {
         match self {
-            super::ModelType::AMP => lexer::ModelType::AMP,
-            super::ModelType::C => lexer::ModelType::C,
-            super::ModelType::CORE => lexer::ModelType::CORE,
-            super::ModelType::D => lexer::ModelType::D,
-            super::ModelType::L => lexer::ModelType::L,
-            super::ModelType::NJF => lexer::ModelType::NJF,
-            super::ModelType::NMOS => lexer::ModelType::NMOS,
-            super::ModelType::NPN => lexer::ModelType::NPN,
-            super::ModelType::OPT => lexer::ModelType::OPT,
-            super::ModelType::PJF => lexer::ModelType::PJF,
-            super::ModelType::PMOS => lexer::ModelType::PMOS,
-            super::ModelType::PNP => lexer::ModelType::PNP,
-            super::ModelType::R => lexer::ModelType::R,
-            super::ModelType::U => lexer::ModelType::U,
-            super::ModelType::W => lexer::ModelType::W,
-            super::ModelType::S => lexer::ModelType::S,
-            super::ModelType::Unknown(span) => lexer::ModelType::Unknown(span.build(file)),
+            super::ModelType::AMP => crate::ModelType::AMP,
+            super::ModelType::C => crate::ModelType::C,
+            super::ModelType::CORE => crate::ModelType::CORE,
+            super::ModelType::D => crate::ModelType::D,
+            super::ModelType::L => crate::ModelType::L,
+            super::ModelType::NJF => crate::ModelType::NJF,
+            super::ModelType::NMOS => crate::ModelType::NMOS,
+            super::ModelType::NPN => crate::ModelType::NPN,
+            super::ModelType::OPT => crate::ModelType::OPT,
+            super::ModelType::PJF => crate::ModelType::PJF,
+            super::ModelType::PMOS => crate::ModelType::PMOS,
+            super::ModelType::PNP => crate::ModelType::PNP,
+            super::ModelType::R => crate::ModelType::R,
+            super::ModelType::U => crate::ModelType::U,
+            super::ModelType::W => crate::ModelType::W,
+            super::ModelType::S => crate::ModelType::S,
+            super::ModelType::Unknown(span) => crate::ModelType::Unknown(span.build(file)),
         }
     }
 }

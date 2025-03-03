@@ -5,7 +5,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use netlist_db::lexer::parser::top;
+use netlist_db::parser::top;
 use std::{env, path::PathBuf, time::Instant};
 #[tokio::main]
 async fn main() {
