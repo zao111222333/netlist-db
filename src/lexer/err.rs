@@ -53,8 +53,7 @@ struct Styles {
 }
 const STYLES: LazyCell<Styles> = LazyCell::new(|| {
     use anstyle::{AnsiColor, Color};
-    use std::io::IsTerminal;
-    if std::io::stdout().is_terminal() {
+    if colored::control::SHOULD_COLORIZE.should_colorize() {
         Styles {
             msg: Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta))),
             typ: Style::new()

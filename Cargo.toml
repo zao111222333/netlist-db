@@ -1,6 +1,6 @@
 [package]
 name = "netlist-db"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 license = "MIT"
 authors = ["Junzhuo <zhou@junzhuo.site>"]
@@ -25,6 +25,7 @@ regex = "1.11.1"
 thiserror = "2.0.11"
 tokio = { version = "1.43.0", features = ["full"] }
 anstyle = "1.0.8"
+colored = "2.1"
 
 [dev-dependencies]
 console = "0.15"
