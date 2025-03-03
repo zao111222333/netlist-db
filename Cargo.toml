@@ -1,7 +1,7 @@
 [workspace]
 members = ["pybind"]
 [workspace.package]
-version = "0.2.3"
+version = "0.2.4"
 
 [workspace.dependencies]
 polars = { version = "0.46", features = ["fmt", "dtype-date", "timezones", "lazy"], default-features = false }
@@ -28,6 +28,7 @@ include = ["/src", "/examples", "README.md"]
 
 [features]
 defualt = []
+py = ['dep:pyo3', 'dep:polars', 'dep:pyo3-polars', 'dep:polars-arrow']
 
 [dependencies]
 fast-float2 = "0.2.3"
@@ -40,10 +41,10 @@ thiserror = "2.0.11"
 tokio.workspace = true
 anstyle = "1.0.8"
 colored = "2.1"
-pyo3.workspace = true
-pyo3-polars.workspace = true
-polars.workspace = true
-polars-arrow.workspace = true
+pyo3 = { workspace = true, optional = true }
+pyo3-polars = { workspace = true, optional = true }
+polars = { workspace = true, optional = true }
+polars-arrow = { workspace = true, optional = true }
 
 [dev-dependencies]
 console = "0.15"

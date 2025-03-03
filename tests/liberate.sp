@@ -1339,8 +1339,10 @@ C0_0 altos_25 0 Q_cap
 + 2.2107626e-09
 + 1.1140000e-13
 + 2.2118626e-09
-.enddata
 
 .end
+
+* .enddata
+
 
 * end of sim.sp

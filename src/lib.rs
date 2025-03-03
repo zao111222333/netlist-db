@@ -103,12 +103,14 @@ pub enum DataValues<'s> {
     /// Column-laminated (parallel merging) data files to use.
     LAM(),
 }
+#[cfg(feature = "py")]
 use polars::{error::PolarsError, frame::DataFrame, prelude::Column};
 pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a DataValues<'s>);
 impl<'s> DataValues<'s> {
     pub fn csv(&self) -> DataValuesCsv<'s, '_> {
         DataValuesCsv(self)
     }
+    #[cfg(feature = "py")]
     pub fn dataframe(&self) -> Result<DataFrame, PolarsError> {
         if let Self::InlineNum { params, values } = self {
             let ncols = params.len();

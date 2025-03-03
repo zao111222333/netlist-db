@@ -524,7 +524,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                     (
                         many0_dummyfirst(multiline_sep(float_unit)),
                         space_newline,
-                        enddata,
+                        opt(enddata),
                     ),
                     |(mut values, _, _)| {
                         values[0] = first_n;
@@ -548,7 +548,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                 (i, (param_str, param)) = multiline_sep(name_str).parse(i)?;
                 if param_str.to_uppercase().as_str() == "DATAFORM" {
                     return map(
-                        (many1(multiline_sep(value)), space_newline, enddata),
+                        (many1(multiline_sep(value)), space_newline, opt(enddata)),
                         |(values, _, _)| values,
                     )
                     .parse(i)
