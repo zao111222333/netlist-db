@@ -156,7 +156,7 @@ impl fmt::Display for DataValuesCsv<'_, '_> {
                 f,
                 "{}{}",
                 InlineDispaly(params, Display::fmt, ','),
-                WrapDispaly(values, Display::fmt, '\0', ',', params.len())
+                WrapDispaly(values, Display::fmt, "", ',', params.len())
             ),
             DataValues::InlineNum { params, values } => write!(
                 f,
@@ -165,7 +165,7 @@ impl fmt::Display for DataValuesCsv<'_, '_> {
                 WrapDispaly(
                     values,
                     |float: &f64, f: &mut fmt::Formatter<'_>| write!(f, "{}", FloatDisplay(float)),
-                    '\0',
+                    "",
                     ',',
                     params.len()
                 )
