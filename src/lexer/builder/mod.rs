@@ -16,6 +16,8 @@ pub struct KeyValue {
 pub enum Token {
     KV(KeyValue),
     Value(Value),
+    V(Span),
+    I(Span),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -114,6 +116,7 @@ pub struct LocalAST {
     pub option: Vec<(Span, Option<Value>)>,
     pub data: Vec<Data>,
     pub general: Vec<General>,
+    pub init_condition: Vec<(Span, Value, Option<Span>)>,
     pub unknwon: Vec<Unknwon>,
     pub errors: Vec<ParseError>,
 }

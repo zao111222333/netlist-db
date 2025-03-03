@@ -8,7 +8,7 @@ use nom::{
     IResult, Input, Parser,
     branch::alt,
     bytes::complete::{tag, take, take_till, take_while, take_while1},
-    character::complete::{char, digit1},
+    character::{char, complete::digit1},
     combinator::{map, map_res, opt},
     error::ErrorKind,
     multi::{many0, many1},
@@ -272,8 +272,14 @@ pub(super) fn key_value(i: LocatedSpan) -> IResult<LocatedSpan, KeyValue> {
 }
 
 #[inline]
-pub(super) fn token(i: LocatedSpan) -> IResult<LocatedSpan, Token> {
-    alt((map(key_value, Token::KV), map(value, Token::Value))).parse(i)
+pub(super) fn token(input: LocatedSpan) -> IResult<LocatedSpan, Token> {
+    alt((
+        map(key_value, Token::KV),
+        map(v, Token::V),
+        map(i, Token::I),
+        map(value, Token::Value),
+    ))
+    .parse(input)
 }
 
 #[inline]
@@ -282,6 +288,74 @@ pub(super) fn option(i: LocatedSpan) -> IResult<LocatedSpan, (Span, Option<Value
         map(key_value, |kv| (kv.k, Some(kv.v))),
         map(name, |k| (k, None)),
     ))
+    .parse(i)
+}
+#[inline]
+pub(super) fn v(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+    map(
+        (
+            alt((char('V'), char('v'))),
+            loss_sep,
+            char('('),
+            loss_sep,
+            name,
+            loss_sep,
+            char(')'),
+        ),
+        |(_, _, _, _, name, _, _)| name,
+    )
+    .parse(i)
+}
+#[inline]
+pub(super) fn i(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+    map(
+        (
+            alt((char('I'), char('i'))),
+            loss_sep,
+            char('('),
+            loss_sep,
+            name,
+            loss_sep,
+            char(')'),
+        ),
+        |(_, _, _, _, name, _, _)| name,
+    )
+    .parse(i)
+}
+
+#[inline]
+pub(super) fn init_condition(
+    i: LocatedSpan,
+) -> IResult<LocatedSpan, impl Iterator<Item = (Span, Value, Option<Span>)>> {
+    #[inline]
+    fn node_volt(i: LocatedSpan) -> IResult<LocatedSpan, (Span, Value)> {
+        map(
+            (v, loss_sep, char('='), loss_sep, value),
+            |(node, _, _, _, val)| (node, val),
+        )
+        .parse(i)
+    }
+    #[inline]
+    fn subckt(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
+        map_res(
+            (name_str, loss_sep, char('='), loss_sep, name),
+            |((keyword, _), _, _, _, name)| {
+                if keyword.to_lowercase().eq("subckt") {
+                    Ok(name)
+                } else {
+                    Err("want subckt")
+                }
+            },
+        )
+        .parse(i)
+    }
+    map(
+        (many1(multiline_sep(node_volt)), opt(multiline_sep(subckt))),
+        |(iter, opt_subckt)| {
+            iter.into_iter()
+                .map(move |(node, val)| (node, val, opt_subckt))
+        },
+    )
     .parse(i)
 }
 
@@ -669,6 +743,11 @@ pub(super) fn local_ast<'a>(
                         let param;
                         (i, param) = many1(multiline_sep(key_value)).parse(i)?;
                         ast.param.extend(param);
+                    }
+                    "ic" => {
+                        let _init_condition;
+                        (i, _init_condition) = init_condition(i)?;
+                        ast.init_condition.extend(_init_condition);
                     }
                     "ends" => {
                         (i, _) = opt((space1, key)).parse(i)?;

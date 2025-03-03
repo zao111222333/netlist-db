@@ -44,6 +44,13 @@ impl<'s, T1: Builder<'s>, T2: Builder<'s>> Builder<'s> for (T1, T2) {
         (self.0.build(file), self.1.build(file))
     }
 }
+impl<'s, T1: Builder<'s>, T2: Builder<'s>, T3: Builder<'s>> Builder<'s> for (T1, T2, T3) {
+    type Out = (T1::Out, T2::Out, T3::Out);
+    #[inline]
+    fn build(&self, file: &'s str) -> Self::Out {
+        (self.0.build(file), self.1.build(file), self.2.build(file))
+    }
+}
 
 impl<'s> Builder<'s> for super::Value {
     type Out = lexer::Value<'s>;
@@ -74,6 +81,8 @@ impl<'s> Builder<'s> for super::Token {
         match self {
             super::Token::KV(key_value) => lexer::Token::KV(key_value.build(file)),
             super::Token::Value(v) => lexer::Token::Value(v.build(file)),
+            super::Token::V(v) => lexer::Token::V(v.build(file)),
+            super::Token::I(v) => lexer::Token::I(v.build(file)),
         }
     }
 }

@@ -39,6 +39,8 @@ pub struct KeyValue<'s> {
 pub enum Token<'s> {
     KV(KeyValue<'s>),
     Value(Value<'s>),
+    V(Cow<'s, str>),
+    I(Cow<'s, str>),
 }
 
 /// ``` spice
@@ -134,7 +136,6 @@ pub enum ModelType<'s> {
     S,
     Unknown(Cow<'s, str>),
 }
-
 #[expect(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Default)]
 pub struct AST<'s> {
@@ -143,6 +144,11 @@ pub struct AST<'s> {
     pub model: Vec<Model<'s>>,
     pub param: Vec<KeyValue<'s>>,
     pub option: Vec<(Cow<'s, str>, Option<Value<'s>>)>,
+    /// transient initial conditions
+    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/ic.htm
+    ///
+    /// `node, val, [subckt]`
+    pub init_condition: Vec<(Cow<'s, str>, Value<'s>, Option<Cow<'s, str>>)>,
     pub general: Vec<General<'s>>,
     pub data: Vec<Data<'s>>,
     pub unknwon: Vec<Unknwon<'s>>,
@@ -206,6 +212,8 @@ impl builder::AST {
                 .extend(local_ast.general.iter().map(|b| b.build(file)));
             ast.data
                 .extend(local_ast.data.iter().map(|b| b.build(file)));
+            ast.init_condition
+                .extend(local_ast.init_condition.iter().map(|b| b.build(file)));
             ast.unknwon
                 .extend(local_ast.unknwon.iter().map(|b| b.build(file)));
             for e in &local_ast.errors {

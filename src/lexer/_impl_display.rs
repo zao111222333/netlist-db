@@ -3,6 +3,56 @@ use std::fmt::Display;
 
 use super::*;
 
+struct WrapDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result>(&'a [T], F, usize);
+impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for WrapDispaly<'_, T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for ts in self.0.chunks(self.2) {
+            write!(f, "\n+")?;
+            for t in ts {
+                write!(f, " ")?;
+                self.1(t, f)?;
+            }
+        }
+        Ok(())
+    }
+}
+struct InlineDispaly<'a, T: Display>(&'a [T]);
+impl<T: Display> Display for InlineDispaly<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for t in self.0 {
+            write!(f, " {t}")?;
+        }
+        Ok(())
+    }
+}
+struct FloatDisplay<'a>(&'a f64);
+impl fmt::Display for FloatDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:.7e}", self.0)
+    }
+}
+
+struct OptionDispaly<'a, T: Display>(&'a Option<T>);
+impl<T: Display> Display for OptionDispaly<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(t) = self.0 {
+            write!(f, " {t}")
+        } else {
+            Ok(())
+        }
+    }
+}
+struct MultilineDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result>(&'a [T], F);
+impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for MultilineDispaly<'_, T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for t in self.0 {
+            write!(f, "\n")?;
+            self.1(t, f)?;
+        }
+        Ok(())
+    }
+}
+
 impl fmt::Display for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -11,14 +61,6 @@ impl fmt::Display for Value<'_> {
         }
     }
 }
-
-struct FloatDisplay<'a>(&'a f64);
-impl fmt::Display for FloatDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:.7e}", self.0)
-    }
-}
-
 impl fmt::Display for KeyValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}={}", self.k, self.v)
@@ -30,6 +72,8 @@ impl fmt::Display for Token<'_> {
         match self {
             Self::KV(key_value) => write!(f, "{key_value}"),
             Self::Value(v) => write!(f, "{v}"),
+            Self::V(name) => write!(f, "V({name})"),
+            Self::I(name) => write!(f, "I({name})"),
         }
     }
 }
@@ -58,47 +102,6 @@ impl fmt::Display for ModelType<'_> {
     }
 }
 
-struct WrapDispaly<'a, T: Display>(&'a [T], usize);
-impl<T: Display> Display for WrapDispaly<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for ts in self.0.chunks(self.1) {
-            write!(f, "\n+")?;
-            for t in ts {
-                write!(f, " {t}")?;
-            }
-        }
-        Ok(())
-    }
-}
-struct WrapOptionDispaly<'a, 's>(&'a [(Cow<'s, str>, Option<Value<'s>>)], usize);
-impl Display for WrapOptionDispaly<'_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for ts in self.0.chunks(self.1) {
-            write!(f, "\n+")?;
-            for (k, v) in ts {
-                if let Some(v) = v {
-                    write!(f, " {k}={v}")?;
-                } else {
-                    write!(f, " {k}")?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-struct WrapFloatDispaly<'a>(&'a [f64], usize);
-impl Display for WrapFloatDispaly<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for ts in self.0.chunks(self.1) {
-            write!(f, "\n+")?;
-            for t in ts {
-                write!(f, " {}", FloatDisplay(t))?;
-            }
-        }
-        Ok(())
-    }
-}
-
 impl fmt::Display for Data<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, ".DATA {}", self.name)?;
@@ -107,48 +110,22 @@ impl fmt::Display for Data<'_> {
                 f,
                 "\n+{} DATAFORM{}",
                 InlineDispaly(params),
-                WrapDispaly(values, params.len())
+                WrapDispaly(values, Display::fmt, params.len())
             )?,
             DataValues::InlineNum { params, values } => write!(
                 f,
                 "\n+{}{}",
                 InlineDispaly(params),
-                WrapFloatDispaly(values, params.len())
+                WrapDispaly(
+                    values,
+                    |float: &f64, f: &mut fmt::Formatter<'_>| write!(f, "{}", FloatDisplay(float)),
+                    params.len()
+                )
             )?,
             DataValues::MER() => todo!(),
             DataValues::LAM() => todo!(),
         }
         write!(f, "\n.ENDDATA")
-    }
-}
-
-struct InlineDispaly<'a, T: Display>(&'a [T]);
-impl<T: Display> Display for InlineDispaly<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for t in self.0 {
-            write!(f, " {t}")?;
-        }
-        Ok(())
-    }
-}
-
-struct OptionDispaly<'a, T: Display>(&'a Option<T>);
-impl<T: Display> Display for OptionDispaly<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(t) = self.0 {
-            write!(f, " {t}")
-        } else {
-            Ok(())
-        }
-    }
-}
-struct MultilineDispaly<'a, T: Display>(&'a [T]);
-impl<T: Display> Display for MultilineDispaly<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for t in self.0 {
-            write!(f, "\n{t}")?;
-        }
-        Ok(())
     }
 }
 
@@ -231,7 +208,7 @@ impl fmt::Display for instance::TimeValuePoint<'_> {
 
 impl fmt::Display for instance::PWL<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PWL({})", WrapDispaly(&self.points, 1),)
+        write!(f, "PWL({})", WrapDispaly(&self.points, Display::fmt, 1),)
     }
 }
 
@@ -301,7 +278,7 @@ impl fmt::Display for Model<'_> {
             ".MODEL {} {}{}",
             self.name,
             self.model_type,
-            WrapDispaly(&self.params, 4)
+            WrapDispaly(&self.params, Display::fmt, 4)
         )
     }
 }
@@ -334,17 +311,47 @@ impl fmt::Display for General<'_> {
 impl fmt::Display for AST<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.option.is_empty() {
-            write!(f, ".OPTION {}", WrapOptionDispaly(&self.option, 4))?;
+            write!(
+                f,
+                ".OPTION {}",
+                WrapDispaly(
+                    &self.option,
+                    |option: &(Cow<'_, str>, Option<Value<'_>>), f: &mut fmt::Formatter<'_>| {
+                        if let Some(v) = &option.1 {
+                            write!(f, "{}={v}", option.0)
+                        } else {
+                            write!(f, "{}", option.0)
+                        }
+                    },
+                    4
+                )
+            )?;
         }
         if !self.param.is_empty() {
-            write!(f, "\n.PARAM {}", WrapDispaly(&self.param, 4))?;
+            write!(f, "\n.PARAM {}", WrapDispaly(&self.param, Display::fmt, 4))?;
         }
-        write!(f, "{}", MultilineDispaly(&self.model))?;
-        write!(f, "{}", MultilineDispaly(&self.subckt))?;
-        write!(f, "{}", MultilineDispaly(&self.instance))?;
-        write!(f, "{}", MultilineDispaly(&self.data))?;
-        write!(f, "{}", MultilineDispaly(&self.general))?;
-        write!(f, "{}", MultilineDispaly(&self.unknwon))?;
+        write!(f, "{}", MultilineDispaly(&self.model, Display::fmt))?;
+        write!(f, "{}", MultilineDispaly(&self.subckt, Display::fmt))?;
+        write!(f, "{}", MultilineDispaly(&self.instance, Display::fmt))?;
+        write!(
+            f,
+            "{}",
+            MultilineDispaly(
+                &self.init_condition,
+                |ic: &(Cow<'_, str>, Value<'_>, Option<Cow<'_, str>>),
+                 f: &mut fmt::Formatter<'_>| {
+                    write!(f, ".IC V({})={}", ic.0, ic.1)?;
+                    if let Some(subckt) = &ic.2 {
+                        write!(f, " suckt={subckt}")
+                    } else {
+                        Ok(())
+                    }
+                },
+            )
+        )?;
+        write!(f, "{}", MultilineDispaly(&self.data, Display::fmt))?;
+        write!(f, "{}", MultilineDispaly(&self.general, Display::fmt))?;
+        write!(f, "{}", MultilineDispaly(&self.unknwon, Display::fmt))?;
         Ok(())
     }
 }
