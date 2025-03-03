@@ -1,39 +1,44 @@
-// #[cfg(test)]
-// mod _test_impl;
+mod _impl_display;
+mod builder;
 mod err;
-mod instance;
+pub mod instance;
 pub mod parser;
-pub use err::{ParseError, ParseErrorInner};
-pub use instance::Instance;
 
-use crate::file::{ParsedId, Span};
-use core::fmt;
-use std::sync::{Arc, OnceLock};
+use alloc::borrow::Cow;
+use builder::{
+    Builder as _,
+    span::{FileId, ParsedId},
+};
+use err::{ParseError, ParseErrorInner};
+use std::collections::HashMap;
 
-#[derive(Debug, Clone, Default)]
-#[cfg_attr(not(test), derive(Copy))]
-pub struct KeyValue {
-    pub k: Span,
-    pub v: Value,
+#[derive(Debug)]
+pub struct Parsed {
+    pub top_id: ParsedId,
+    pub id2idx: HashMap<FileId, ParsedId>,
+    pub inner: Vec<(FileId, builder::AST)>,
 }
+#[derive(Debug)]
+pub struct Files {
+    pub inner: Vec<String>,
+}
+
 #[derive(Debug, Clone)]
-#[cfg_attr(not(test), derive(Copy))]
-pub enum Token {
-    KV(KeyValue),
-    Value(Value),
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Value {
+pub enum Value<'s> {
     Num(f64),
-    Expr(Span),
+    Expr(Cow<'s, str>),
 }
 
-impl Default for Value {
-    #[inline]
-    fn default() -> Self {
-        Self::Num(0.0)
-    }
+#[derive(Debug, Clone)]
+pub struct KeyValue<'s> {
+    pub k: Cow<'s, str>,
+    pub v: Value<'s>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Token<'s> {
+    KV(KeyValue<'s>),
+    Value(Value<'s>),
 }
 
 /// ``` spice
@@ -42,122 +47,59 @@ impl Default for Value {
 /// .ends pulvt11ll_ckt
 /// ```
 /// Do NOT support `.include` / `.lib` in `.subckt`
-#[derive(Debug)]
-pub struct Subckt {
-    pub name: Span,
+#[derive(Debug, Clone)]
+pub struct Subckt<'s> {
+    pub name: Cow<'s, str>,
     /// subckt/model name is the last arg
-    pub ports: Vec<Span>,
-    pub params: Vec<KeyValue>,
-    pub ast: AST,
+    pub ports: Vec<Cow<'s, str>>,
+    pub params: Vec<KeyValue<'s>>,
+    pub ast: AST<'s>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Data {
-    pub name: Span,
-    pub values: DataValues,
+pub struct General<'s> {
+    pub cmd: builder::GeneralCmd,
+    pub tokens: Vec<Token<'s>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Unknwon<'s> {
+    pub cmd: Cow<'s, str>,
+    pub tokens: Vec<Token<'s>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Model<'s> {
+    pub name: Cow<'s, str>,
+    pub model_type: ModelType<'s>,
+    pub params: Vec<KeyValue<'s>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Data<'s> {
+    pub name: Cow<'s, str>,
+    pub values: DataValues<'s>,
 }
 #[derive(Debug, Clone)]
-pub enum DataValues {
+pub enum DataValues<'s> {
     InlineExpr {
-        params: Vec<Span>,
-        values: Vec<Value>,
+        params: Vec<Cow<'s, str>>,
+        values: Vec<Value<'s>>,
     },
     InlineNum {
-        params: Vec<Span>,
+        params: Vec<Cow<'s, str>>,
         values: Vec<f64>,
     },
     /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/data.htm
     /// Concatenated (series merging) data files to use.
-    MER(DataFiles),
+    MER(),
     /// Column-laminated (parallel merging) data files to use.
-    LAM(DataFiles),
+    LAM(),
 }
 
+#[expect(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
-pub struct DataFile {
-    pub file: Span,
-    pub pname_col_num: Vec<PnameColNum>,
-}
-
-#[derive(Debug, Clone)]
-pub struct PnameColNum {
-    pub pname: Span,
-    pub col_num: usize,
-}
-#[derive(Debug, Clone)]
-pub struct DataFiles {
-    pub files: Vec<DataFile>,
-    pub out: Option<Span>,
-}
-
-#[derive(Debug, Clone)]
-pub struct General {
-    pub cmd: GeneralCmd,
-    pub tokens: Vec<Token>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Unknwon {
-    pub cmd: Span,
-    pub tokens: Vec<Token>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Model {
-    pub name: Span,
-    pub model_type: ModelType,
-    pub params: Vec<KeyValue>,
-}
-
-/// The `.include` and `.lib file tt` will be directly evaluated
-#[derive(Debug, Default)]
-pub struct LocalAST {
-    pub subckt: Vec<Subckt>,
-    pub instance: Vec<Instance>,
-    pub model: Vec<Model>,
-    pub param: Vec<KeyValue>,
-    pub option: Vec<Token>,
-    pub data: Vec<Data>,
-    pub general: Vec<General>,
-    pub unknwon: Vec<Unknwon>,
-    pub errors: Vec<ParseError>,
-}
-
-impl LocalAST {
-    pub fn is_empty(&self) -> bool {
-        self.subckt.is_empty()
-            && self.instance.is_empty()
-            && self.model.is_empty()
-            && self.param.is_empty()
-            && self.option.is_empty()
-            && self.data.is_empty()
-            && self.general.is_empty()
-            && self.unknwon.is_empty()
-            && self.errors.is_empty()
-    }
-}
-
-#[derive(Debug)]
-pub enum Segment {
-    Local(LocalAST),
-    Include(Arc<OnceLock<Result<ParsedId, ParseError>>>),
-}
-#[derive(Debug, Default)]
-pub struct AST {
-    pub segments: Vec<Segment>,
-}
-
-impl AST {
-    fn new() -> Self {
-        Self {
-            segments: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-#[cfg_attr(not(test), derive(Copy))]
-pub enum ModelType {
+pub enum ModelType<'s> {
     /// operational amplifier model
     AMP,
     /// capacitor model
@@ -190,42 +132,125 @@ pub enum ModelType {
     W,
     /// S-parameter
     S,
-    Unknown(Span),
+    Unknown(Cow<'s, str>),
 }
-impl From<(&str, Span)> for ModelType {
-    #[inline]
-    fn from(value: (&str, Span)) -> Self {
-        let (_str, _type) = value;
-        match _str.to_uppercase().as_str() {
-            "AMP" => Self::AMP,
-            "C" => Self::C,
-            "CORE" => Self::CORE,
-            "D" => Self::D,
-            "L" => Self::L,
-            "NJF" => Self::NJF,
-            "NMOS" => Self::NMOS,
-            "NPN" => Self::NPN,
-            "OPT" => Self::OPT,
-            "PJF" => Self::PJF,
-            "PMOS" => Self::PMOS,
-            "PNP" => Self::PNP,
-            "R" => Self::R,
-            "U" => Self::U,
-            "W" => Self::W,
-            "S" => Self::S,
-            _ => Self::Unknown(_type),
+
+#[expect(clippy::upper_case_acronyms)]
+#[derive(Debug, Clone, Default)]
+pub struct AST<'s> {
+    pub subckt: Vec<Subckt<'s>>,
+    pub instance: Vec<instance::Instance<'s>>,
+    pub model: Vec<Model<'s>>,
+    pub param: Vec<KeyValue<'s>>,
+    pub option: Vec<(Cow<'s, str>, Option<Value<'s>>)>,
+    pub general: Vec<General<'s>>,
+    pub data: Vec<Data<'s>>,
+    pub unknwon: Vec<Unknwon<'s>>,
+}
+
+impl builder::AST {
+    #[expect(clippy::too_many_arguments)]
+    fn build<'s>(
+        &self,
+        ast: &mut AST<'s>,
+        has_err: &mut bool,
+        file_id: &FileId,
+        parsed_id: ParsedId,
+        files: &'s Files,
+        parsed: &Parsed,
+    ) {
+        fn build_local<'s>(
+            local_ast: &builder::LocalAST,
+            ast: &mut AST<'s>,
+            has_err: &mut bool,
+            file: &'s str,
+            file_id: &FileId,
+            parsed_id: ParsedId,
+            files: &'s Files,
+            parsed: &Parsed,
+        ) {
+            fn build_subckt<'s>(
+                s: &builder::Subckt,
+                has_err: &mut bool,
+                file: &'s str,
+                file_id: &FileId,
+                parsed_id: ParsedId,
+                files: &'s Files,
+                parsed: &Parsed,
+            ) -> Subckt<'s> {
+                let mut ast = AST::default();
+                s.ast
+                    .build(&mut ast, has_err, file_id, parsed_id, files, parsed);
+                Subckt {
+                    name: s.name.build(file),
+                    ports: s.ports.build(file),
+                    params: s.params.build(file),
+                    ast,
+                }
+            }
+            ast.subckt.extend(
+                local_ast
+                    .subckt
+                    .iter()
+                    .map(|s| build_subckt(s, has_err, file, file_id, parsed_id, files, parsed)),
+            );
+            ast.instance
+                .extend(local_ast.instance.iter().map(|b| b.build(file)));
+            ast.model
+                .extend(local_ast.model.iter().map(|b| b.build(file)));
+            ast.param
+                .extend(local_ast.param.iter().map(|b| b.build(file)));
+            ast.option
+                .extend(local_ast.option.iter().map(|b| b.build(file)));
+            ast.general
+                .extend(local_ast.general.iter().map(|b| b.build(file)));
+            ast.data
+                .extend(local_ast.data.iter().map(|b| b.build(file)));
+            ast.unknwon
+                .extend(local_ast.unknwon.iter().map(|b| b.build(file)));
+            for e in &local_ast.errors {
+                e.report(has_err, file_id, file);
+            }
+        }
+        let file = &files.inner[parsed_id.0];
+        for seg in &self.segments {
+            match seg {
+                builder::Segment::Local(local_ast) => {
+                    build_local(
+                        local_ast, ast, has_err, file, file_id, parsed_id, files, parsed,
+                    );
+                }
+                builder::Segment::Include(ast_res) => {
+                    let ast_res = ast_res.get().unwrap();
+                    match ast_res {
+                        Ok(parsed_id) => {
+                            let (file_id, _ast) = &parsed.inner[parsed_id.0];
+                            _ast.build(ast, has_err, file_id, *parsed_id, files, parsed);
+                        }
+                        Err(e) => {
+                            e.report(has_err, file_id, file);
+                        }
+                    }
+                }
+            }
         }
     }
 }
-#[derive(Debug, Clone, Copy)]
-pub enum GeneralCmd {
-    /// `.ic` initial condition
-    Ic,
-    /// `.ic` initial condition
-    Meas,
-}
-impl fmt::Display for GeneralCmd {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+
+impl Files {
+    #[inline]
+    pub fn build(&self, parsed: Parsed) -> (AST<'_>, bool) {
+        let mut ast = AST::default();
+        let mut has_err = false;
+        let (file_id, _ast) = &parsed.inner[parsed.top_id.0];
+        _ast.build(
+            &mut ast,
+            &mut has_err,
+            file_id,
+            parsed.top_id,
+            self,
+            &parsed,
+        );
+        (ast, has_err)
     }
 }

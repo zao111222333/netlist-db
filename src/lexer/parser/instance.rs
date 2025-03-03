@@ -1,15 +1,14 @@
-use crate::{
-    file::LocatedSpan,
-    lexer::{
-        Instance,
+use super::super::{
+    builder::{
         instance::{
-            BJT, Capacitor, Current, CurrentSource, Diode, Inductor, InstanceCtx, MOSFET, PWL,
-            Resistor, Subckt, Voltage, VoltageSource,
+            BJT, Capacitor, Current, CurrentSource, Diode, Inductor, Instance, InstanceCtx, MOSFET,
+            PWL, Resistor, Subckt, TimeValuePoint, Voltage, VoltageSource,
         },
-        parser::utils::{
-            key_value, loss_sep, many0_dummyfirst, multiline_sep, name, name_char, name_str,
-            ports_params, value,
-        },
+        span::LocatedSpan,
+    },
+    parser::utils::{
+        key_value, loss_sep, many0_dummyfirst, multiline_sep, name, name_char, name_str,
+        ports_params, value,
     },
 };
 use nom::{
@@ -52,56 +51,38 @@ pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
 
 #[inline]
 fn _resistor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
-    map_res(ports_params, |(ports, params)| {
-        if ports.len() == 2 {
-            Ok(InstanceCtx::Resistor(Resistor {
-                n1: ports[0],
-                n2: ports[1],
-                params,
-            }))
-        } else {
-            Err(format!(
-                "Resistor is 2 ports device, but found {} port(s)",
-                ports.len()
-            ))
-        }
-    })
+    map(
+        (
+            multiline_sep(name),
+            multiline_sep(name),
+            multiline_sep(value),
+        ),
+        |(n1, n2, value)| InstanceCtx::Resistor(Resistor { n1, n2, value }),
+    )
     .parse(i)
 }
 #[inline]
 fn _capacitor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
-    map_res(ports_params, |(ports, params)| {
-        if ports.len() == 2 {
-            Ok(InstanceCtx::Capacitor(Capacitor {
-                n1: ports[0],
-                n2: ports[1],
-                params,
-            }))
-        } else {
-            Err(format!(
-                "Capacitor is 2 ports device, but found {} port(s)",
-                ports.len()
-            ))
-        }
-    })
+    map(
+        (
+            multiline_sep(name),
+            multiline_sep(name),
+            multiline_sep(value),
+        ),
+        |(n1, n2, value)| InstanceCtx::Capacitor(Capacitor { n1, n2, value }),
+    )
     .parse(i)
 }
 #[inline]
 fn _inductor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
-    map_res(ports_params, |(ports, params)| {
-        if ports.len() == 2 {
-            Ok(InstanceCtx::Inductor(Inductor {
-                n1: ports[0],
-                n2: ports[1],
-                params,
-            }))
-        } else {
-            Err(format!(
-                "Inductor is 2 ports device, but found {} port(s)",
-                ports.len()
-            ))
-        }
-    })
+    map(
+        (
+            multiline_sep(name),
+            multiline_sep(name),
+            multiline_sep(value),
+        ),
+        |(n1, n2, value)| InstanceCtx::Inductor(Inductor { n1, n2, value }),
+    )
     .parse(i)
 }
 #[inline]
@@ -213,7 +194,10 @@ fn _pwl(i: LocatedSpan) -> IResult<LocatedSpan, PWL> {
                         Ok(PWL {
                             points: points
                                 .chunks_exact(2)
-                                .map(|values| (values[0], values[1]))
+                                .map(|values| TimeValuePoint {
+                                    time: values[0],
+                                    value: values[1],
+                                })
                                 .collect(),
                             ..Default::default()
                         })

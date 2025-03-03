@@ -11,17 +11,17 @@ use nom::IResult;
 use regex::Regex;
 use utils::local_ast;
 
-use super::{AST, ParseError, Segment};
-use crate::{
-    builder::{Files, Parsed},
-    file::{EndReason, FileId, FileStorage, LocatedSpan, ParsedId, Pos, span},
-    lexer::{LocalAST, ParseErrorInner},
+use super::{
+    Files, ParseError, ParseErrorInner, Parsed,
+    builder::{
+        AST, LocalAST, Segment,
+        span::{EndReason, FileId, FileStorage, LocatedSpan, ParsedId, Pos, span},
+    },
 };
 
 mod instance;
 mod manager;
 mod utils;
-// mod measure;
 
 #[inline]
 pub fn ast(

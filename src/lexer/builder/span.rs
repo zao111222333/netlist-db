@@ -9,31 +9,12 @@ pub fn span(file_ctx: &str, line_offset: u32) -> LocatedSpan {
 }
 pub type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
 
-#[cfg(test)]
-#[derive(Debug)]
-#[cfg(test)]
-pub struct TestLocatedSpan<'a> {
-    pub offset: usize,
-    pub line: u32,
-    pub fragment: &'a str,
-}
-#[cfg(test)]
-impl PartialEq<LocatedSpan<'_>> for TestLocatedSpan<'_> {
-    fn eq(&self, other: &LocatedSpan<'_>) -> bool {
-        self.offset == other.location_offset()
-            && self.line == other.location_line()
-            && &self.fragment == other.fragment()
-    }
-}
-
 #[derive(Debug, Clone, Default, Copy)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
     /// The line number of the fragment relatively to the input of the parser. It starts at line 1.
     pub line_num: u32,
-    // #[cfg(test)]
-    // pub ctx: String,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -17,16 +17,17 @@ use nom::{
 use regex::Regex;
 
 use super::{
-    super::{Instance, KeyValue, LocalAST, Model, Subckt, Token, Unknwon},
-    ast,
-    manager::ParseManager,
-};
-use crate::{
-    file::{EndReason, FileId, LocatedSpan, Pos, Span},
-    lexer::{
-        AST, Data, DataFile, DataFiles, DataValues, ParseErrorInner, PnameColNum, Value,
+    super::{
+        ParseErrorInner,
+        builder::{
+            AST, Data, DataFile, DataFiles, DataValues, KeyValue, LocalAST, Model, PnameColNum,
+            Subckt, Token, Unknwon, Value,
+            span::{EndReason, FileId, LocatedSpan, Pos, Span},
+        },
         parser::instance::instance,
     },
+    ast,
+    manager::ParseManager,
 };
 
 #[inline]
@@ -275,9 +276,13 @@ pub(super) fn token(i: LocatedSpan) -> IResult<LocatedSpan, Token> {
     alt((map(key_value, Token::KV), map(value, Token::Value))).parse(i)
 }
 
-#[cfg(test)]
-pub(super) fn span(s: &str) -> LocatedSpan {
-    LocatedSpan::new(s)
+#[inline]
+pub(super) fn option(i: LocatedSpan) -> IResult<LocatedSpan, (Span, Option<Value>)> {
+    alt((
+        map(key_value, |kv| (kv.k, Some(kv.v))),
+        map(name, |k| (k, None)),
+    ))
+    .parse(i)
 }
 
 pub(super) fn many0_dummyfirst<'a, T, F>(
@@ -656,9 +661,9 @@ pub(super) fn local_ast<'a>(
                         ast.data.push(_data);
                     }
                     "option" => {
-                        let option;
-                        (i, option) = many1(multiline_sep(token)).parse(i)?;
-                        ast.option.extend(option);
+                        let options;
+                        (i, options) = many1(multiline_sep(option)).parse(i)?;
+                        ast.option.extend(options);
                     }
                     "param" | "parameter" => {
                         let param;

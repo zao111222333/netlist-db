@@ -1,10 +1,10 @@
+use super::builder::span::{FileId, LocatedSpan, Pos, Span};
+
 use anstyle::Style;
+use core::{cell::LazyCell, fmt};
 use indexmap::IndexMap;
 use nom::error::ErrorKind;
-
-use crate::file::{FileId, LocatedSpan, Pos, Span};
-use core::fmt;
-use std::{cell::LazyCell, path::PathBuf};
+use std::path::PathBuf;
 
 impl From<nom::Err<nom::error::Error<LocatedSpan<'_>>>> for ParseError {
     #[inline]
@@ -90,7 +90,7 @@ impl ParseError {
         impl fmt::Display for ReportDisplay<'_> {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                use crate::builder::Builder;
+                use super::builder::Builder as _;
                 let styles: Styles = *STYLES;
                 write!(
                     f,

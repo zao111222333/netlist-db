@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, oneshot};
 
-use crate::{file::FileStorage, lexer::AST};
+use super::super::builder::{AST, span::FileStorage};
 
 #[derive(Debug)]
 pub struct ParseManager {

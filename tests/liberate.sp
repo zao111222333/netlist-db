@@ -77,91 +77,91 @@ VCP CP 0  pwl(
 + 0 0.800)
 VD D 0  pwl(
 + 0 0.800)
-.ic v(clkb) = 0
-.ic v(clkbb) = 0.8
-.ic v(ml_ax) = 0
-.ic v(ml_b) = 0.8
-.ic v(sl_a) = 0.8
-.ic v(sl_bx) = 0
+* .ic v(clkb) = 0
+* .ic v(clkbb) = 0.8
+* .ic v(ml_ax) = 0
+* .ic v(ml_b) = 0.8
+* .ic v(sl_a) = 0.8
+* .ic v(sl_bx) = 0
 
-**load:0.00015**
+* **load:0.00015**
 
-.param Q_cap=1.5000001e-16
-VQ Q altos_25 0
-.print tran v(Q) i(VQ)
-C0_0 altos_25 0 Q_cap
+* .param Q_cap=1.5000001e-16
+* VQ Q altos_25 0
+* .print tran v(Q) i(VQ)
+* C0_0 altos_25 0 Q_cap
 
-.ic v(Q) = 0.8
+* .ic v(Q) = 0.8
 
 
 
-.param icap_t1=2.8750000e-14
+* .param icap_t1=2.8750000e-14
 
-.param icap_t2=2.8462500e-12
-.meas tran AltosCap INTEG i(VCDN) from='icap_t1' to='icap_t2'
+* .param icap_t2=2.8462500e-12
+* .meas tran AltosCap INTEG i(VCDN) from='icap_t1' to='icap_t2'
 
-.param icap_tend0=0.0000000e+00
+* .param icap_tend0=0.0000000e+00
 
-.param altos_icap_tend0=0.0000000e+00
+* .param altos_icap_tend0=0.0000000e+00
 
-.param icap_tend1=2.8750000e-13
-.meas tran AltosCap1 INTEG i(VCDN) from='icap_tend0' to='icap_tend1'
+* .param icap_tend1=2.8750000e-13
+* .meas tran AltosCap1 INTEG i(VCDN) from='icap_tend0' to='icap_tend1'
 
-.param icap_tend2=8.6249999e-13
-.meas tran AltosCap2 INTEG i(VCDN) from='icap_tend0' to='icap_tend2'
+* .param icap_tend2=8.6249999e-13
+* .meas tran AltosCap2 INTEG i(VCDN) from='icap_tend0' to='icap_tend2'
 
-.param icap_tend3=1.4375000e-12
-.meas tran AltosCap3 INTEG i(VCDN) from='icap_tend0' to='icap_tend3'
+* .param icap_tend3=1.4375000e-12
+* .meas tran AltosCap3 INTEG i(VCDN) from='icap_tend0' to='icap_tend3'
 
-.param icap_tend4=1.7250000e-12
-.meas tran AltosCap4 INTEG i(VCDN) from='icap_tend0' to='icap_tend4'
+* .param icap_tend4=1.7250000e-12
+* .meas tran AltosCap4 INTEG i(VCDN) from='icap_tend0' to='icap_tend4'
 
-.param icap_tend5=2.0125000e-12
-.meas tran AltosCap5 INTEG i(VCDN) from='icap_tend0' to='icap_tend5'
+* .param icap_tend5=2.0125000e-12
+* .meas tran AltosCap5 INTEG i(VCDN) from='icap_tend0' to='icap_tend5'
 
-.param icap_tend6=2.3000000e-12
-.meas tran AltosCap6 INTEG i(VCDN) from='icap_tend0' to='icap_tend6'
+* .param icap_tend6=2.3000000e-12
+* .meas tran AltosCap6 INTEG i(VCDN) from='icap_tend0' to='icap_tend6'
 
-.param icap_tend7=2.5875000e-12
-.meas tran AltosCap7 INTEG i(VCDN) from='icap_tend0' to='icap_tend7'
+* .param icap_tend7=2.5875000e-12
+* .meas tran AltosCap7 INTEG i(VCDN) from='icap_tend0' to='icap_tend7'
 
-.param icap_tend8=2.8747125e-12
-.meas tran AltosCap8 INTEG i(VCDN) from='icap_tend0' to='icap_tend8'
+* .param icap_tend8=2.8747125e-12
+* .meas tran AltosCap8 INTEG i(VCDN) from='icap_tend0' to='icap_tend8'
 
-.param power_tend=2.2107626e-09
-.meas tran AltosLeakCross  trig at=0 targ v(Q) val=0.400000 fall=last
-.meas tran AltosOutputVoltage000 FIND v(Q) AT='power_tend'
-.meas tran AltosPinPower000 INTEG i(VCP) from=0 to='power_tend'
-.meas tran AltosPinPower001 INTEG i(VD) from=0 to='power_tend'
-.meas tran AltosPower000 INTEG i(VVDD) from=0 to='power_tend'
-.meas tran AltosPower001 INTEG i(VVSS) from=0 to='power_tend'
+* .param power_tend=2.2107626e-09
+* .meas tran AltosLeakCross  trig at=0 targ v(Q) val=0.400000 fall=last
+* .meas tran AltosOutputVoltage000 FIND v(Q) AT='power_tend'
+* .meas tran AltosPinPower000 INTEG i(VCP) from=0 to='power_tend'
+* .meas tran AltosPinPower001 INTEG i(VD) from=0 to='power_tend'
+* .meas tran AltosPower000 INTEG i(VVDD) from=0 to='power_tend'
+* .meas tran AltosPower001 INTEG i(VVSS) from=0 to='power_tend'
 
-.meas tran AltosBgnVoltage_ml_ax_000000 FIND v(ml_ax) AT=0
-.meas tran AltosEndVoltage_ml_ax_000000 FIND v(ml_ax) AT='tran_tend-1e-12'
+* .meas tran AltosBgnVoltage_ml_ax_000000 FIND v(ml_ax) AT=0
+* .meas tran AltosEndVoltage_ml_ax_000000 FIND v(ml_ax) AT='tran_tend-1e-12'
 
-.meas tran AltosBgnVoltage_sl_bx_000001 FIND v(sl_bx) AT=0
-.meas tran AltosEndVoltage_sl_bx_000001 FIND v(sl_bx) AT='tran_tend-1e-12'
+* .meas tran AltosBgnVoltage_sl_bx_000001 FIND v(sl_bx) AT=0
+* .meas tran AltosEndVoltage_sl_bx_000001 FIND v(sl_bx) AT='tran_tend-1e-12'
 
-.meas tran AltosConsLastVoltage FIND v(Q) AT='tran_tend-1e-12'
-.meas tran altosFirstOrlastdelay trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.400000 fall=1
-.meas tran AltosDelay trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.400000 fall=last
-.meas tran AltosTransitionFirstOrLast0 trig at=0 targ v(Q) val=0.560000 fall=1
-.meas tran AltosTransitionFirstOrLast1 trig at=0 targ v(Q) val=0.240000 fall=1
-.meas tran AltosTransition0 trig at=0 targ v(Q) val=0.560000 fall=last
-.meas tran AltosTransition1 trig at=0 targ v(Q) val=0.240000 fall=last
-.meas tran AltosECSM000 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.784000 fall=last
-.meas tran AltosECSM001 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.760000 fall=last
-.meas tran AltosECSM002 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.720000 fall=last
-.meas tran AltosECSM003 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.640000 fall=last
-.meas tran AltosECSM004 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.560000 fall=last
-.meas tran AltosECSM005 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.480000 fall=last
-.meas tran AltosECSM006 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.400000 fall=last
-.meas tran AltosECSM007 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.320000 fall=last
-.meas tran AltosECSM008 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.240001 fall=last
-.meas tran AltosECSM009 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.160001 fall=last
-.meas tran AltosECSM010 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.080001 fall=last
-.meas tran AltosECSM011 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.040001 fall=last
-.meas tran AltosECSM012 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.016001 fall=last
+* .meas tran AltosConsLastVoltage FIND v(Q) AT='tran_tend-1e-12'
+* .meas tran altosFirstOrlastdelay trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.400000 fall=1
+* .meas tran AltosDelay trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.400000 fall=last
+* .meas tran AltosTransitionFirstOrLast0 trig at=0 targ v(Q) val=0.560000 fall=1
+* .meas tran AltosTransitionFirstOrLast1 trig at=0 targ v(Q) val=0.240000 fall=1
+* .meas tran AltosTransition0 trig at=0 targ v(Q) val=0.560000 fall=last
+* .meas tran AltosTransition1 trig at=0 targ v(Q) val=0.240000 fall=last
+* .meas tran AltosECSM000 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.784000 fall=last
+* .meas tran AltosECSM001 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.760000 fall=last
+* .meas tran AltosECSM002 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.720000 fall=last
+* .meas tran AltosECSM003 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.640000 fall=last
+* .meas tran AltosECSM004 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.560000 fall=last
+* .meas tran AltosECSM005 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.480000 fall=last
+* .meas tran AltosECSM006 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.400000 fall=last
+* .meas tran AltosECSM007 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.320000 fall=last
+* .meas tran AltosECSM008 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.240001 fall=last
+* .meas tran AltosECSM009 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.160001 fall=last
+* .meas tran AltosECSM010 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.080001 fall=last
+* .meas tran AltosECSM011 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.040001 fall=last
+* .meas tran AltosECSM012 trig v(CDN) val=0.400000  fall=1 targ v(Q) val=0.016001 fall=last
 
 .option autostop nomod numdgt=6 measdgt=6 ingold=2 measout=0 runlvl=5 itrprt=1
 
