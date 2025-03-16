@@ -1,7 +1,7 @@
 [workspace]
 members = ["pybind"]
 [workspace.package]
-version = "0.2.4"
+version = "0.2.5"
 
 [workspace.dependencies]
 polars = { version = "0.46", features = ["fmt", "dtype-date", "timezones", "lazy"], default-features = false }

@@ -43,10 +43,10 @@ pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
                     params,
                 },
             })
-            .parse(i);
+            .parse_complete(i);
         }
     };
-    map(parser, |ctx| Instance { name, ctx }).parse(i)
+    map(parser, |ctx| Instance { name, ctx }).parse_complete(i)
 }
 
 #[inline]
@@ -59,7 +59,7 @@ fn _resistor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
         ),
         |(n1, n2, value)| InstanceCtx::Resistor(Resistor { n1, n2, value }),
     )
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _capacitor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -71,7 +71,7 @@ fn _capacitor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
         ),
         |(n1, n2, value)| InstanceCtx::Capacitor(Capacitor { n1, n2, value }),
     )
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _inductor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -83,7 +83,7 @@ fn _inductor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
         ),
         |(n1, n2, value)| InstanceCtx::Inductor(Inductor { n1, n2, value }),
     )
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _mosfet(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -110,7 +110,7 @@ fn _mosfet(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
             n - 1
         )),
     })
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _bjt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -137,7 +137,7 @@ fn _bjt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
             n - 1
         )),
     })
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _diode(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -154,7 +154,7 @@ fn _diode(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
             n - 1
         )),
     })
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _subckt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -169,7 +169,7 @@ fn _subckt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
             Err("There is no subckt name")
         }
     })
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _pwl(i: LocatedSpan) -> IResult<LocatedSpan, PWL> {
@@ -210,7 +210,7 @@ fn _pwl(i: LocatedSpan) -> IResult<LocatedSpan, PWL> {
             }
         },
     )
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _voltage(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -228,7 +228,7 @@ fn _voltage(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
         ),
         |(n1, n2, source)| InstanceCtx::Voltage(Voltage { n1, n2, source }),
     )
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 fn _current(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
@@ -246,5 +246,5 @@ fn _current(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
         ),
         |(n1, n2, source)| InstanceCtx::Current(Current { n1, n2, source }),
     )
-    .parse(i)
+    .parse_complete(i)
 }

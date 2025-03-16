@@ -2,3 +2,4 @@
 Cargo.lock
 pybind/netlist_db/netlist_db.abi3.so
 pybind/netlist_db/__pycache__
+tmp

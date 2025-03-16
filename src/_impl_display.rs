@@ -425,6 +425,22 @@ impl fmt::Display for AST<'_> {
                 },
             )
         )?;
+        write!(
+            f,
+            "{}",
+            MultilineDispaly(
+                &self.nodeset,
+                |ic: &(Cow<'_, str>, Value<'_>, Option<Cow<'_, str>>),
+                 f: &mut fmt::Formatter<'_>| {
+                    write!(f, ".NODESET {}={}", ic.0, ic.1)?;
+                    if let Some(subckt) = &ic.2 {
+                        write!(f, " suckt={subckt}")
+                    } else {
+                        Ok(())
+                    }
+                },
+            )
+        )?;
         write!(f, "{}", MultilineDispaly(&self.data, Display::fmt))?;
         write!(f, "{}", MultilineDispaly(&self.general, Display::fmt))?;
         write!(f, "{}", MultilineDispaly(&self.unknwon, Display::fmt))?;

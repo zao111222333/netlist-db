@@ -24,7 +24,10 @@ use super::{
             Subckt, Token, Unknwon, Value,
             span::{EndReason, FileId, LocatedSpan, Pos, Span},
         },
-        parser::instance::instance,
+        parser::{
+            cmds::{init_condition, nodeset},
+            instance::instance,
+        },
     },
     ast,
     manager::ParseManager,
@@ -32,15 +35,15 @@ use super::{
 
 #[inline]
 pub(super) fn space(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    take_while(|c: char| matches!(c, '\t' | '\r' | ' ')).parse(i)
+    take_while(|c: char| matches!(c, '\t' | '\r' | ' ')).parse_complete(i)
 }
 #[inline]
 pub(super) fn space1(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    take_while1(|c: char| matches!(c, '\t' | '\r' | ' ')).parse(i)
+    take_while1(|c: char| matches!(c, '\t' | '\r' | ' ')).parse_complete(i)
 }
 #[inline]
 pub(super) fn space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    take_while(|c: char| matches!(c, '\t' | '\r' | ' ' | '\n')).parse(i)
+    take_while(|c: char| matches!(c, '\t' | '\r' | ' ' | '\n')).parse_complete(i)
 }
 
 #[inline]
@@ -62,12 +65,12 @@ pub(super) fn loss_sep(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
         map((comment_space_newline, char('+'), space), |(_, _, s)| s),
         space,
     ))
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
 pub(super) fn key(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
-    map(take_while1(is_key), |s: LocatedSpan| s.into()).parse(i)
+    map(take_while1(is_key), |s: LocatedSpan| s.into()).parse_complete(i)
 }
 
 enum Unit {
@@ -100,7 +103,7 @@ fn unit(i: LocatedSpan) -> IResult<LocatedSpan, Unit> {
         "YR" => Ok(Unit::Factor(31536000.0)),
         _ => Err(ErrorKind::Float),
     })
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
@@ -118,7 +121,7 @@ pub(super) fn float_unit(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
         Some(Unit::DB) => 10.0_f64.powf(f / 20.0),
         None => f,
     })
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
@@ -127,7 +130,7 @@ pub(super) fn key_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
         let _s: &str = s.fragment();
         (_s, s.into())
     })
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
@@ -152,12 +155,12 @@ pub(super) fn path(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
         unquote,
         map(take_while1(is_path), |s: LocatedSpan| s.into()),
     ))
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
 pub(super) fn integer(i: LocatedSpan) -> IResult<LocatedSpan, usize> {
-    map_res(digit1, |s: LocatedSpan| s.parse()).parse(i)
+    map_res(digit1, |s: LocatedSpan| s.parse()).parse_complete(i)
 }
 
 #[inline]
@@ -169,7 +172,7 @@ pub(super) fn path_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
             _s
         }),
     ))
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
@@ -177,12 +180,12 @@ pub(super) fn name_char(i: LocatedSpan) -> IResult<LocatedSpan, (u8, Span)> {
     map(take_while1(is_name), |s: LocatedSpan| {
         (s.fragment().as_bytes()[0], s.into())
     })
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
 pub(super) fn name(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
-    map(take_while1(is_name), |s: LocatedSpan| s.into()).parse(i)
+    map(take_while1(is_name), |s: LocatedSpan| s.into()).parse_complete(i)
 }
 
 #[inline]
@@ -191,12 +194,12 @@ pub(super) fn name_str(i: LocatedSpan) -> IResult<LocatedSpan, (&str, Span)> {
         let _s: &str = s.fragment();
         (_s, s.into())
     })
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
 pub(super) fn formula(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
-    map(take_while1(is_formula), |s: LocatedSpan| s.into()).parse(i)
+    map(take_while1(is_formula), |s: LocatedSpan| s.into()).parse_complete(i)
 }
 
 #[inline]
@@ -205,7 +208,7 @@ pub(super) fn unquote(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
         delimited(char('\''), take_till(|c| c == '\''), take(1_usize)),
         |s: LocatedSpan| s.into(),
     )
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
@@ -217,25 +220,25 @@ pub(super) fn unquote_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
             _s
         },
     )
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
 pub(super) fn comment(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    delimited(tag("*"), take_till(|c| c == '\n'), take(1_usize)).parse(i)
+    delimited(tag("*"), take_till(|c| c == '\n'), take(1_usize)).parse_complete(i)
 }
 
 #[inline]
 pub(super) fn comment_space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    preceded(many0((space_newline, comment)), space_newline).parse(i)
+    preceded(many0((space_newline, comment)), space_newline).parse_complete(i)
 }
 
 #[inline]
 pub(super) fn value(i: LocatedSpan) -> IResult<LocatedSpan, Value> {
-    if let Ok((i, s)) = unquote.parse(i) {
+    if let Ok((i, s)) = unquote.parse_complete(i) {
         return Ok((i, Value::Expr(s)));
     }
-    match (float_unit.parse(i), formula.parse(i)) {
+    match (float_unit.parse_complete(i), formula.parse_complete(i)) {
         (Ok((i_num, num)), Ok((i_formula, formula))) => {
             // when the len of rest of formula is less than num
             // means there is a non-quote expression, like `2+2`
@@ -268,7 +271,7 @@ pub(super) fn equal<'a, T, F: MyParser<'a, T>>(f: F) -> impl MyParser<'a, T> {
 
 #[inline]
 pub(super) fn key_value(i: LocatedSpan) -> IResult<LocatedSpan, KeyValue> {
-    map((name, equal(value)), |(k, v)| KeyValue { k, v }).parse(i)
+    map((name, equal(value)), |(k, v)| KeyValue { k, v }).parse_complete(i)
 }
 
 #[inline]
@@ -279,7 +282,7 @@ pub(super) fn token(input: LocatedSpan) -> IResult<LocatedSpan, Token> {
         map(i, Token::I),
         map(value, Token::Value),
     ))
-    .parse(input)
+    .parse_complete(input)
 }
 
 #[inline]
@@ -288,7 +291,7 @@ pub(super) fn option(i: LocatedSpan) -> IResult<LocatedSpan, (Span, Option<Value
         map(key_value, |kv| (kv.k, Some(kv.v))),
         map(name, |k| (k, None)),
     ))
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 pub(super) fn v(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
@@ -304,7 +307,7 @@ pub(super) fn v(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
         ),
         |(_, _, _, _, name, _, _)| name,
     )
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 pub(super) fn i(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
@@ -320,43 +323,7 @@ pub(super) fn i(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
         ),
         |(_, _, _, _, name, _, _)| name,
     )
-    .parse(i)
-}
-
-#[inline]
-pub(super) fn init_condition(
-    i: LocatedSpan,
-) -> IResult<LocatedSpan, impl Iterator<Item = (Span, Value, Option<Span>)>> {
-    #[inline]
-    fn node_volt(i: LocatedSpan) -> IResult<LocatedSpan, (Span, Value)> {
-        map(
-            (v, loss_sep, char('='), loss_sep, value),
-            |(node, _, _, _, val)| (node, val),
-        )
-        .parse(i)
-    }
-    #[inline]
-    fn subckt(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
-        map_res(
-            (name_str, loss_sep, char('='), loss_sep, name),
-            |((keyword, _), _, _, _, name)| {
-                if keyword.to_lowercase().eq("subckt") {
-                    Ok(name)
-                } else {
-                    Err("want subckt")
-                }
-            },
-        )
-        .parse(i)
-    }
-    map(
-        (many1(multiline_sep(node_volt)), opt(multiline_sep(subckt))),
-        |(iter, opt_subckt)| {
-            iter.into_iter()
-                .map(move |(node, val)| (node, val, opt_subckt))
-        },
-    )
-    .parse(i)
+    .parse_complete(i)
 }
 
 pub(super) fn many0_dummyfirst<'a, T, F>(
@@ -371,7 +338,7 @@ where
         acc.push(T::default());
         loop {
             let len = i.input_len();
-            match f.parse(i.clone()) {
+            match f.parse_complete(i.clone()) {
                 Err(nom::Err::Error(_)) => return Ok((i, acc)),
                 Err(e) => return Err(e),
                 Ok((i1, o)) => {
@@ -407,7 +374,7 @@ pub(super) fn ports_params(i: LocatedSpan) -> IResult<LocatedSpan, (Vec<Span>, V
             None => (ports, Vec::new()),
         },
     )
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
@@ -421,7 +388,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                 Err(())
             }
         })
-        .parse(i)
+        .parse_complete(i)
     }
     #[inline]
     fn data_files(i: LocatedSpan) -> IResult<LocatedSpan, DataFiles> {
@@ -437,7 +404,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                     }
                 },
             )
-            .parse(i)
+            .parse_complete(i)
         }
         #[inline]
         fn out(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
@@ -451,7 +418,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                     }
                 },
             )
-            .parse(i)
+            .parse_complete(i)
         }
         #[inline]
         fn pname_col_num(i: LocatedSpan) -> IResult<LocatedSpan, PnameColNum> {
@@ -467,7 +434,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                     }
                 },
             )
-            .parse(i)
+            .parse_complete(i)
         }
         map(
             (
@@ -484,16 +451,16 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
             ),
             |(files, out, _, _)| DataFiles { files, out },
         )
-        .parse(i)
+        .parse_complete(i)
     }
     let name;
-    (i, name) = multiline_sep(key).parse(i)?;
+    (i, name) = multiline_sep(key).parse_complete(i)?;
     let first;
     let first_str;
-    (i, (first_str, first)) = multiline_sep(name_str).parse(i)?;
+    (i, (first_str, first)) = multiline_sep(name_str).parse_complete(i)?;
     match first_str.to_uppercase().as_str() {
         "MER" => {
-            return data_files.parse(i).map(|(i, data_files)| {
+            return data_files.parse_complete(i).map(|(i, data_files)| {
                 (
                     i,
                     Data {
@@ -504,7 +471,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
             });
         }
         "LAM" => {
-            return data_files.parse(i).map(|(i, data_files)| {
+            return data_files.parse_complete(i).map(|(i, data_files)| {
                 (
                     i,
                     Data {
@@ -518,7 +485,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
     }
     let mut params = vec![first];
     loop {
-        match multiline_sep(float_unit).parse(i) {
+        match multiline_sep(float_unit).parse_complete(i) {
             Ok((_i, first_n)) => {
                 return map(
                     (
@@ -531,7 +498,7 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
                         values
                     },
                 )
-                .parse(_i)
+                .parse_complete(_i)
                 .map(|(i, values)| {
                     (
                         i,
@@ -545,13 +512,13 @@ pub(super) fn data(mut i: LocatedSpan) -> IResult<LocatedSpan, Data> {
             Err(_) => {
                 let param;
                 let param_str;
-                (i, (param_str, param)) = multiline_sep(name_str).parse(i)?;
+                (i, (param_str, param)) = multiline_sep(name_str).parse_complete(i)?;
                 if param_str.to_uppercase().as_str() == "DATAFORM" {
                     return map(
                         (many1(multiline_sep(value)), space_newline, opt(enddata)),
                         |(values, _, _)| values,
                     )
-                    .parse(i)
+                    .parse_complete(i)
                     .map(|(i, values)| {
                         (
                             i,
@@ -609,7 +576,7 @@ pub(super) fn model(i: LocatedSpan) -> IResult<LocatedSpan, Model> {
             params,
         },
     )
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
@@ -633,7 +600,7 @@ pub(super) fn lib(i: LocatedSpan) -> IResult<LocatedSpan, Option<(&str, String)>
         // skip to `.endl`
         map((endlib, opt((space1, key))), |_| None),
     ))
-    .parse(i)
+    .parse_complete(i)
 }
 #[inline]
 pub(super) fn subckt<'a>(
@@ -654,7 +621,7 @@ pub(super) fn subckt<'a>(
             ast,
         },
     )
-    .parse(i)
+    .parse_complete(i)
 }
 
 #[inline]
@@ -668,20 +635,15 @@ pub(super) fn local_ast<'a>(
     loop {
         log::trace!("\n{:?}", i.fragment());
         (i, _) = comment_space_newline(i)?;
-        match char('.').parse(i) {
-            Err(nom::Err::Error(_)) => match instance(i) {
-                Ok((_i, inst)) => {
-                    i = _i;
-                    ast.instance.push(inst);
-                }
-                Err(e) => {
-                    if i.is_empty() {
-                        return Ok((i, (ast, EndReason::End)));
-                    } else {
-                        return Err(e);
-                    }
-                }
-            },
+        if i.is_empty() {
+            return Ok((i, (ast, EndReason::End)));
+        }
+        match char('.').parse_complete(i) {
+            Err(nom::Err::Error(_)) => {
+                let inst;
+                (i, inst) = instance(i)?;
+                ast.instance.push(inst);
+            }
             Err(e) => return Err(e),
             Ok((_i, _)) => {
                 i = _i;
@@ -691,7 +653,7 @@ pub(super) fn local_ast<'a>(
                 match cmd_str.to_lowercase().as_str() {
                     "lib" => {
                         let lib_info;
-                        (i, (_, lib_info)) = (space1, lib).parse(i)?;
+                        (i, (_, lib_info)) = (space1, lib).parse_complete(i)?;
                         if let Some((file_name_str, section_str)) = lib_info {
                             return Ok((
                                 i,
@@ -707,7 +669,7 @@ pub(super) fn local_ast<'a>(
                     }
                     "inc" | "include" => {
                         let file_name;
-                        (i, (_, file_name)) = (space1, path_str).parse(i)?;
+                        (i, (_, file_name)) = (space1, path_str).parse_complete(i)?;
                         return Ok((
                             i,
                             (
@@ -736,12 +698,12 @@ pub(super) fn local_ast<'a>(
                     }
                     "option" => {
                         let options;
-                        (i, options) = many1(multiline_sep(option)).parse(i)?;
+                        (i, options) = many1(multiline_sep(option)).parse_complete(i)?;
                         ast.option.extend(options);
                     }
                     "param" | "parameter" => {
                         let param;
-                        (i, param) = many1(multiline_sep(key_value)).parse(i)?;
+                        (i, param) = many1(multiline_sep(key_value)).parse_complete(i)?;
                         ast.param.extend(param);
                     }
                     "ic" => {
@@ -749,18 +711,23 @@ pub(super) fn local_ast<'a>(
                         (i, _init_condition) = init_condition(i)?;
                         ast.init_condition.extend(_init_condition);
                     }
+                    "nodeset" => {
+                        let _nodeset;
+                        (i, _nodeset) = nodeset(i)?;
+                        ast.nodeset.extend(_nodeset);
+                    }
                     "ends" => {
-                        (i, _) = opt((space1, key)).parse(i)?;
+                        (i, _) = opt((space1, key)).parse_complete(i)?;
                         return Ok((i, (ast, EndReason::End)));
                     }
                     "end" => {
-                        return Ok((i, (ast, EndReason::End)));
+                        (i, _) = many0((loss_sep, name)).parse_complete(i)?;
                     }
                     _ => {
                         ast.errors
                             .push(ParseErrorInner::Unknown(cmd.clone()).record(i));
                         let tokens;
-                        (i, tokens) = many0(multiline_sep(token)).parse(i)?;
+                        (i, tokens) = many0(multiline_sep(token)).parse_complete(i)?;
                         ast.unknwon.push(Unknwon { cmd, tokens })
                     }
                 }

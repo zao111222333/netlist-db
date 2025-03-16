@@ -192,6 +192,11 @@ pub struct AST<'s> {
     ///
     /// `node, val, [subckt]`
     pub init_condition: Vec<(Cow<'s, str>, Value<'s>, Option<Cow<'s, str>>)>,
+    /// Initializes specified nodal voltages for DC operating point analysis and corrects convergence problems in DC analysis.
+    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/nodeset.htm
+    ///
+    /// `node, val, [subckt]`
+    pub nodeset: Vec<(Cow<'s, str>, Value<'s>, Option<Cow<'s, str>>)>,
     pub general: Vec<General<'s>>,
     pub data: Vec<Data<'s>>,
     pub unknwon: Vec<Unknwon<'s>>,
@@ -257,6 +262,8 @@ impl builder::AST {
                 .extend(local_ast.data.iter().map(|b| b.build(file)));
             ast.init_condition
                 .extend(local_ast.init_condition.iter().map(|b| b.build(file)));
+            ast.nodeset
+                .extend(local_ast.nodeset.iter().map(|b| b.build(file)));
             ast.unknwon
                 .extend(local_ast.unknwon.iter().map(|b| b.build(file)));
             for e in &local_ast.errors {

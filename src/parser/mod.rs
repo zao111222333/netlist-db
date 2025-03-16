@@ -19,6 +19,7 @@ use super::{
     },
 };
 
+mod cmds;
 mod instance;
 mod manager;
 mod utils;

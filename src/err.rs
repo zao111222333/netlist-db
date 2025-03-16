@@ -10,9 +10,9 @@ impl From<nom::Err<nom::error::Error<LocatedSpan<'_>>>> for ParseError {
     #[inline]
     fn from(e: nom::Err<nom::error::Error<LocatedSpan<'_>>>) -> Self {
         match e {
-            nom::Err::Incomplete(_) => ParseErrorInner::Nom(None).with(None),
+            nom::Err::Incomplete(_) => unreachable!(),
             nom::Err::Failure(e) | nom::Err::Error(e) => {
-                ParseErrorInner::Nom(Some(e.code)).record(e.input)
+                ParseErrorInner::Nom(e.code).record(e.input)
             }
         }
     }
@@ -26,7 +26,7 @@ pub enum ParseErrorInner {
     NoLibSection { path: PathBuf, section: String },
     /// Nom Error
     #[error("Syntax error")]
-    Nom(Option<ErrorKind>),
+    Nom(ErrorKind),
     /// something else
     #[error("{0:?}")]
     Unknown(Span),
@@ -148,20 +148,12 @@ impl ParseError {
                     ParseErrorInner::Nom(e) => {
                         write!(
                             f,
-                            "{}ParserError{}",
+                            "{}ParserError{}: {}{e:?}{}",
                             styles.typ.render(),
                             styles.typ.render_reset(),
-                        )?;
-                        if let Some(e) = e {
-                            writeln!(
-                                f,
-                                ": {}{e:?}{}",
-                                styles.msg.render(),
-                                styles.msg.render_reset()
-                            )
-                        } else {
-                            writeln!(f)
-                        }
+                            styles.msg.render(),
+                            styles.msg.render_reset()
+                        )
                     }
                     ParseErrorInner::Unknown(span) => {
                         writeln!(

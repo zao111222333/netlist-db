@@ -1,0 +1,7 @@
+cmd = "{{rootdir}}/../target/release/examples/parser"
+extensions = ["sp"]
+permit = 1
+[[prepare]]
+cmd = "carg1o"
+# args = ["build", "--release", "--examples"]
+workdir = "{{rootdir}}/.."

@@ -117,6 +117,7 @@ pub struct LocalAST {
     pub data: Vec<Data>,
     pub general: Vec<General>,
     pub init_condition: Vec<(Span, Value, Option<Span>)>,
+    pub nodeset: Vec<(Span, Value, Option<Span>)>,
     pub unknwon: Vec<Unknwon>,
     pub errors: Vec<ParseError>,
 }

@@ -1,0 +1,21 @@
+* "simulator" "PrimeSim HSPICE"
+* "version" "S-2021.09 linux64"
+* "format" "HSP"
+* "rundate" "19:11:34 03/15/2025 "
+* "netlist" "thermal_RC.sp "
+* "runtitle" ".title "
+* time =    0.            
+* temperature =   25.0000        
+*** BEGIN: Saved Operating Point ***                     
+.option 
++ gmindc=   1.0000p       
+.nodeset
++ ambient = 293.1500        
++ c4bump_0_portx_0_0_0 = 331.7204        
++ c4bump_0_portx_0_m1_0 = 329.5382        
++ c4bump_0_porty_0_0_0 = 331.7197        
++ c4bump_0_porty_0_0_m1 = 329.4348        
++ c4bump_0_portzn_0_0_0 = 330.1644        
++ c4bump_0_portx_0_0_1 = 332.1859        
++ c4bump_0_portx_0_m1_1 = 329.9863             
+***   END: Saved Operating Point ***                     

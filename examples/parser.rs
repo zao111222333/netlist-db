@@ -6,7 +6,7 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use netlist_db::parser::top;
-use std::{env, path::PathBuf, time::Instant};
+use std::{env, path::PathBuf, process::exit, time::Instant};
 #[tokio::main]
 async fn main() {
     _ = simple_logger::SimpleLogger::new()
@@ -23,12 +23,13 @@ async fn main() {
     let now = Instant::now();
     println!("======= AST ===========");
     println!("{ast}");
-    println!("======= ERR ===========");
-    println!("{has_err:?}");
     let elapsed_print = now.elapsed();
     println!("======= stats =========");
     println!("parse: {elapsed_parse:?}");
     println!("build: {elapsed_build:?}");
     println!("print: {elapsed_print:?}");
     println!("=======================");
+    if has_err {
+        exit(1)
+    };
 }
