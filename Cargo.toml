@@ -6,7 +6,7 @@ version = "0.2.5"
 [workspace.dependencies]
 polars = { version = "0.46", features = ["fmt", "dtype-date", "timezones", "lazy"], default-features = false }
 polars-arrow = { version = "0.46", default-features = false }
-pyo3 = { version = "0.23", features = ["abi3-py310"] }
+pyo3 = { version = "0.23", features = ["abi3-py37"] }
 pyo3-polars = { version = "0.20", features = ["derive", "lazy"] }
 tokio = { version = "1.43.0", features = ["full"] }
 simple_logger = "5.0.0"

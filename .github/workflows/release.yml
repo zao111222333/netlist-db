@@ -3,6 +3,7 @@ name: release
 on:
   release:
     types: [published]
+  workflow_dispatch:
 permissions:
   contents: write
 env:
@@ -17,8 +18,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - name: Install toolchain
-        run: rustup target add x86_64-unknown-linux-musl
+          targets: x86_64-unknown-linux-musl
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: musl-tools # provides musl-gcc
+          version: 1.0
       - name: Build
         run: cargo build --release --target x86_64-unknown-linux-musl --example parser
       - name: Prepare files
