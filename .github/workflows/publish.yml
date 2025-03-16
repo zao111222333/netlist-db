@@ -8,7 +8,7 @@ permissions:
   contents: write
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: "1.84.0"
+  RUST_VERSION: "1.85.0"
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -34,3 +34,54 @@ jobs:
          VERSION=${{ needs.prepare.outputs.VERSION }}
          sed -i "/\[workspace.package\]/,/version/ s/version = \"[^\"]*\"/version = \"$VERSION\"/" Cargo.toml
          cargo publish --allow-dirty --registry crates-io
+  build-wheel-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: x86_64-apple-darwin, aarch64-apple-darwin
+      # - name: Set up Python
+      #   uses: actions/setup-python@v4
+      #   with:
+      #     python-version: '3.10'
+      - run: pip install maturin
+      - run: maturin build --release --target x86_64-apple-darwin
+      - run: maturin build --release --target aarch64-apple-darwin
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-macos
+          path: target/wheels/*.whl
+  build-wheel-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: x86_64-unknown-linux-musl, aarch64-unknown-linux-musl
+      - run: pip install maturin
+      - run: maturin build --release --target x86_64-unknown-linux-musl
+      # - run: maturin build --release --target aarch64-unknown-linux-musl
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-linux
+          path: target/wheels/*.whl
+  publish-wheel:
+    needs: [build-wheel-macos, build-wheel-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: wheels
+      - run: pip install twine
+      - run: pip install -U packaging
+      - name: Upload wheels to PyPI
+        env:
+          TWINE_USERNAME: "__token__"
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload wheels/**/*.whl
