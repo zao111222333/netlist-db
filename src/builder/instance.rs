@@ -11,6 +11,7 @@ pub struct Instance {
     pub ctx: InstanceCtx,
 }
 
+#[expect(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 pub enum InstanceCtx {
     Resistor(Resistor),

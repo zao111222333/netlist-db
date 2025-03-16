@@ -65,7 +65,7 @@ struct MultilineDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result
 impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for MultilineDispaly<'_, T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for t in self.0 {
-            write!(f, "\n")?;
+            writeln!(f)?;
             self.1(t, f)?;
         }
         Ok(())

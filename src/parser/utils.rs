@@ -338,7 +338,7 @@ where
         acc.push(T::default());
         loop {
             let len = i.input_len();
-            match f.parse_complete(i.clone()) {
+            match f.parse_complete(i) {
                 Err(nom::Err::Error(_)) => return Ok((i, acc)),
                 Err(e) => return Err(e),
                 Ok((i1, o)) => {
@@ -724,8 +724,7 @@ pub(super) fn local_ast<'a>(
                         (i, _) = many0((loss_sep, name)).parse_complete(i)?;
                     }
                     _ => {
-                        ast.errors
-                            .push(ParseErrorInner::Unknown(cmd.clone()).record(i));
+                        ast.errors.push(ParseErrorInner::Unknown(cmd).record(i));
                         let tokens;
                         (i, tokens) = many0(multiline_sep(token)).parse_complete(i)?;
                         ast.unknwon.push(Unknwon { cmd, tokens })

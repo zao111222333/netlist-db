@@ -1,20 +1,12 @@
 use super::super::{
     builder::{
         Value,
-        instance::{
-            BJT, Capacitor, Current, CurrentSource, Diode, Inductor, Instance, InstanceCtx, MOSFET,
-            PWL, Resistor, Subckt, TimeValuePoint, Voltage, VoltageSource,
-        },
         span::{LocatedSpan, Span},
     },
-    parser::utils::{
-        key_value, loss_sep, many0_dummyfirst, multiline_sep, name, name_char, name_str,
-        ports_params, v, value,
-    },
+    parser::utils::{loss_sep, multiline_sep, name, name_str, v, value},
 };
 use nom::{
     IResult, Parser,
-    branch::alt,
     character::char,
     combinator::{map, map_res, opt},
     multi::many1,

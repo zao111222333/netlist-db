@@ -1,3 +1,4 @@
+#![expect(clippy::upper_case_acronyms)]
 extern crate alloc;
 #[cfg(test)]
 mod _test_utils;
@@ -142,7 +143,7 @@ impl<'s> DataValues<'s> {
         }
     }
 }
-#[expect(clippy::upper_case_acronyms)]
+
 #[derive(Debug, Clone)]
 pub enum ModelType<'s> {
     /// operational amplifier model
@@ -179,7 +180,7 @@ pub enum ModelType<'s> {
     S,
     Unknown(Cow<'s, str>),
 }
-#[expect(clippy::upper_case_acronyms)]
+
 #[derive(Debug, Clone, Default)]
 pub struct AST<'s> {
     pub subckt: Vec<Subckt<'s>>,

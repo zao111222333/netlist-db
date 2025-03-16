@@ -38,7 +38,7 @@ pub fn ast(
         let reason;
         (i, (_ast, reason)) = local_ast(i, &loaded, &manager, &work_dir)?;
         if !_ast.is_empty() {
-            ast.segments.push(Segment::Local(_ast));
+            ast.segments.push(Segment::Local(Box::new(_ast)));
         }
         match reason {
             EndReason::Include { file_name, section } => {
@@ -142,7 +142,7 @@ fn error2ast(err: ParseError) -> AST {
     let mut ast = AST::new();
     let mut local = LocalAST::default();
     local.errors.push(err);
-    ast.segments.push(Segment::Local(local));
+    ast.segments.push(Segment::Local(Box::new(local)));
     ast
 }
 

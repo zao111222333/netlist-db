@@ -21,8 +21,8 @@ use nom::{
 
 #[inline]
 pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
-    let first_char: _;
-    let name: _;
+    let first_char;
+    let name;
     (i, (first_char, name)) = name_char(i)?;
     let parser = match first_char.to_ascii_lowercase() {
         b'r' => _resistor,
@@ -222,8 +222,8 @@ fn _voltage(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
                 map(many1(multiline_sep(key_value)), |params| {
                     VoltageSource::Params(params)
                 }),
-                map(_pwl, |pwl| VoltageSource::PWL(pwl)),
-                map(multiline_sep(value), |value| VoltageSource::Value(value)),
+                map(_pwl, VoltageSource::PWL),
+                map(multiline_sep(value), VoltageSource::Value),
             )),
         ),
         |(n1, n2, source)| InstanceCtx::Voltage(Voltage { n1, n2, source }),
@@ -240,8 +240,8 @@ fn _current(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
                 map(many1(multiline_sep(key_value)), |params| {
                     CurrentSource::Params(params)
                 }),
-                map(_pwl, |pwl| CurrentSource::PWL(pwl)),
-                map(multiline_sep(value), |value| CurrentSource::Value(value)),
+                map(_pwl, CurrentSource::PWL),
+                map(multiline_sep(value), CurrentSource::Value),
             )),
         ),
         |(n1, n2, source)| InstanceCtx::Current(Current { n1, n2, source }),

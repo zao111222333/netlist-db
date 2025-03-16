@@ -138,7 +138,7 @@ impl LocalAST {
 
 #[derive(Debug)]
 pub enum Segment {
-    Local(LocalAST),
+    Local(Box<LocalAST>),
     Include(Arc<OnceLock<Result<ParsedId, ParseError>>>),
 }
 #[derive(Debug, Default)]
@@ -154,6 +154,7 @@ impl AST {
     }
 }
 
+#[expect(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 #[cfg_attr(not(test), derive(Copy))]
 pub enum ModelType {

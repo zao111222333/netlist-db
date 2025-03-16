@@ -1,7 +1,7 @@
 use super::builder::span::{FileId, LocatedSpan, Pos, Span};
 
-use anstyle::Style;
-use core::{cell::LazyCell, fmt};
+use anstyle::{AnsiColor, Color, Style};
+use core::fmt;
 use indexmap::IndexMap;
 use nom::error::ErrorKind;
 use std::path::PathBuf;
@@ -51,26 +51,6 @@ struct Styles {
     typ: Style,
     err: Style,
 }
-const STYLES: LazyCell<Styles> = LazyCell::new(|| {
-    use anstyle::{AnsiColor, Color};
-    if colored::control::SHOULD_COLORIZE.should_colorize() {
-        Styles {
-            msg: Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta))),
-            typ: Style::new()
-                .fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta)))
-                .bold(),
-            err: Style::new()
-                .fg_color(Some(AnsiColor::BrightRed.into()))
-                .bold(),
-        }
-    } else {
-        Styles {
-            msg: Style::new(),
-            typ: Style::new(),
-            err: Style::new(),
-        }
-    }
-});
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -90,7 +70,23 @@ impl ParseError {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 use super::builder::Builder as _;
-                let styles: Styles = *STYLES;
+                let styles = if colored::control::SHOULD_COLORIZE.should_colorize() {
+                    Styles {
+                        msg: Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta))),
+                        typ: Style::new()
+                            .fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta)))
+                            .bold(),
+                        err: Style::new()
+                            .fg_color(Some(AnsiColor::BrightRed.into()))
+                            .bold(),
+                    }
+                } else {
+                    Styles {
+                        msg: Style::new(),
+                        typ: Style::new(),
+                        err: Style::new(),
+                    }
+                };
                 write!(
                     f,
                     "\nFile {}\"{}\"{}",
