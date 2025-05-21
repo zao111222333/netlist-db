@@ -1,0 +1,9 @@
+extern-files = ["cycle_ref0.sp"]
+
+[assert]
+exit-code = 1
+[[assert.golden]]
+file = "{{name}}.stdout"
+match = [
+  { pattern = 'CircularDefinition', count = 1 },
+]

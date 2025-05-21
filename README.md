@@ -112,7 +112,16 @@ print: 11.334µs
 </html>
 </details>
 
+## Regression
+``` bash
+cargo install cargo-regression # install for first time
+cargo build --examples --release
+cargo regression ./tests/
+```
 
 ## TODO
 + Fully expression system
-+ Support more commands
++ Support commands
+  + tran
+  + meas
+  + ...
