@@ -364,6 +364,37 @@ impl<'s> Builder<'s> for super::Data {
         }
     }
 }
+impl<'s> Builder<'s> for super::DataFiles {
+    type Out = crate::DataFiles<'s>;
+    #[inline]
+    fn build(&self, file: &'s str) -> Self::Out {
+        crate::DataFiles {
+            files: self.files.build(file),
+            out: self.out.build(file),
+        }
+    }
+}
+
+impl<'s> Builder<'s> for super::DataFile {
+    type Out = crate::DataFile<'s>;
+    #[inline]
+    fn build(&self, file: &'s str) -> Self::Out {
+        crate::DataFile {
+            file: self.file.build(file),
+            pname_col_num: self.pname_col_num.build(file),
+        }
+    }
+}
+impl<'s> Builder<'s> for super::PnameColNum {
+    type Out = crate::PnameColNum<'s>;
+    #[inline]
+    fn build(&self, file: &'s str) -> Self::Out {
+        crate::PnameColNum {
+            pname: self.pname.build(file),
+            col_num: self.col_num,
+        }
+    }
+}
 
 impl<'s> Builder<'s> for super::DataValues {
     type Out = crate::DataValues<'s>;
@@ -378,8 +409,8 @@ impl<'s> Builder<'s> for super::DataValues {
                 params: params.build(file),
                 values: values.build(file),
             },
-            super::DataValues::MER(data_files) => todo!(),
-            super::DataValues::LAM(data_files) => todo!(),
+            super::DataValues::MER(data_files) => crate::DataValues::MER(data_files.build(file)),
+            super::DataValues::LAM(data_files) => crate::DataValues::LAM(data_files.build(file)),
         }
     }
 }

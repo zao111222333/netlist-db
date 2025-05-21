@@ -51,11 +51,11 @@ impl fmt::Display for FloatDisplay<'_> {
     }
 }
 
-struct OptionDispaly<'a, T: Display>(&'a Option<T>);
-impl<T: Display> Display for OptionDispaly<'_, T> {
+struct OptionDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result>(&'a Option<T>, F);
+impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for OptionDispaly<'_, T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(t) = self.0 {
-            write!(f, " {t}")
+            self.1(t, f)
         } else {
             Ok(())
         }
@@ -120,6 +120,29 @@ impl fmt::Display for ModelType<'_> {
         }
     }
 }
+impl fmt::Display for DataFiles<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}",
+            MultilineDispaly(&self.files, |file, f| write!(
+                f,
+                "+ FILE='{}' {}",
+                file.file,
+                InlineDispaly(
+                    &file.pname_col_num,
+                    |pname_col_num, f| write!(
+                        f,
+                        "{}={}",
+                        pname_col_num.pname, pname_col_num.col_num
+                    ),
+                    ' '
+                )
+            )),
+            OptionDispaly(&self.out, |out, f| write!(f, "\n+ OUT='{out}'")),
+        )
+    }
+}
 
 impl fmt::Display for Data<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -143,8 +166,8 @@ impl fmt::Display for Data<'_> {
                     params.len()
                 )
             )?,
-            DataValues::MER() => todo!(),
-            DataValues::LAM() => todo!(),
+            DataValues::MER(data_files) => write!(f, " MER{data_files}")?,
+            DataValues::LAM(data_files) => write!(f, " LAM{data_files}")?,
         }
         write!(f, "\n.ENDDATA")
     }
@@ -170,8 +193,8 @@ impl fmt::Display for DataValuesCsv<'_, '_> {
                     params.len()
                 )
             ),
-            DataValues::MER() => todo!(),
-            DataValues::LAM() => todo!(),
+            DataValues::MER(_) => unreachable!(),
+            DataValues::LAM(_) => unreachable!(),
         }
     }
 }
@@ -296,7 +319,7 @@ impl fmt::Display for instance::MOSFET<'_> {
             self.nd,
             self.ng,
             self.ns,
-            OptionDispaly(&self.nb),
+            OptionDispaly(&self.nb, |nb, f| write!(f, " {nb}")),
             self.mname,
             InlineDispaly(&self.params, Display::fmt, ' ')
         )
@@ -311,7 +334,7 @@ impl fmt::Display for instance::BJT<'_> {
             self.nc,
             self.nb,
             self.ne,
-            OptionDispaly(&self.ns),
+            OptionDispaly(&self.ns, |ns, f| write!(f, " {ns}")),
             self.mname,
             InlineDispaly(&self.params, Display::fmt, ' ')
         )

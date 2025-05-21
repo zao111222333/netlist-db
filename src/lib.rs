@@ -1,7 +1,5 @@
 #![expect(clippy::upper_case_acronyms)]
 extern crate alloc;
-#[cfg(test)]
-mod _test_utils;
 
 mod _impl_display;
 mod builder;
@@ -100,9 +98,25 @@ pub enum DataValues<'s> {
     },
     /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/data.htm
     /// Concatenated (series merging) data files to use.
-    MER(),
+    MER(DataFiles<'s>),
     /// Column-laminated (parallel merging) data files to use.
-    LAM(),
+    LAM(DataFiles<'s>),
+}
+#[derive(Debug, Clone)]
+pub struct DataFile<'s> {
+    pub file: Cow<'s, str>,
+    pub pname_col_num: Vec<PnameColNum<'s>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PnameColNum<'s> {
+    pub pname: Cow<'s, str>,
+    pub col_num: usize,
+}
+#[derive(Debug, Clone)]
+pub struct DataFiles<'s> {
+    pub files: Vec<DataFile<'s>>,
+    pub out: Option<Cow<'s, str>>,
 }
 #[cfg(feature = "py")]
 use polars::{error::PolarsError, frame::DataFrame, prelude::Column};

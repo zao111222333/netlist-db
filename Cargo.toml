@@ -1,7 +1,7 @@
 [workspace]
 members = ["pybind"]
 [workspace.package]
-version = "0.2.5"
+version = "0.2.6"
 
 [workspace.dependencies]
 polars = { version = "0.46", features = ["fmt", "dtype-date", "timezones", "lazy"], default-features = false }
@@ -11,6 +11,14 @@ pyo3-polars = { version = "0.20", features = ["derive", "lazy"] }
 tokio = { version = "1.43.0", features = ["full"] }
 simple_logger = "5.0.0"
 log = "0.4.25"
+fast-float2 = "0.2.3"
+indexmap = "2.9"
+nom = "8"
+nom_locate = "5"
+regex = "1.11"
+thiserror = "2"
+anstyle = "1"
+colored = "2.1"
 
 [package]
 name = "netlist-db"
@@ -31,16 +39,16 @@ defualt = []
 py = ['dep:pyo3', 'dep:polars', 'dep:pyo3-polars', 'dep:polars-arrow']
 
 [dependencies]
-fast-float2 = "0.2.3"
-indexmap = "2.7.1"
+fast-float2.workspace = true
+indexmap.workspace = true
 log.workspace = true
-nom = "8"
-nom_locate = "5"
-regex = "1.11.1"
-thiserror = "2.0.11"
+nom.workspace = true
+nom_locate.workspace = true
+regex.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
-anstyle = "1.0.8"
-colored = "2.1"
+anstyle.workspace = true
+colored.workspace = true
 pyo3 = { workspace = true, optional = true }
 pyo3-polars = { workspace = true, optional = true }
 polars = { workspace = true, optional = true }
