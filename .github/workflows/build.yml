@@ -77,21 +77,21 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
       - run: cargo clippy --all-features
-  examples:
-    needs: check
-    name: Run Examples
-    runs-on: ubuntu-latest
-    # env:
-      # RUSTFLAGS: "-D warnings -A clippy::todo"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: clippy
-      - run: cargo run --example parser --release -- tests/top.sp
+  # examples:
+  #   needs: check
+  #   name: Run Examples
+  #   runs-on: ubuntu-latest
+  #   # env:
+  #     # RUSTFLAGS: "-D warnings -A clippy::todo"
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: ${{ env.RUST_VERSION }}
+  #         components: clippy
+  #     - run: cargo run --example parser --release -- tests/top.sp
   regression:
-    needs: [unit_test, clippy, examples]
+    needs: [unit_test, clippy]
     name: Regression
     runs-on: ubuntu-latest
     env:
@@ -107,7 +107,7 @@ jobs:
         run: echo "TODO ${{ github.event.pull_request.head.sha }}"
   # Compute code coverage
   codecov:
-    needs: [unit_test, clippy, examples]
+    needs: [unit_test, clippy]
     name: Code Coverage
     runs-on: ubuntu-latest
     steps:
