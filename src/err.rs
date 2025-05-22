@@ -1,4 +1,4 @@
-use super::builder::span::{FileId, LocatedSpan, Pos, Span};
+use crate::span::{FileId, LocatedSpan, Pos, Span};
 
 use anstyle::{AnsiColor, Color, Style};
 use core::fmt;

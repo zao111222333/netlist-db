@@ -1,28 +1,25 @@
-use std::{
-    collections::HashMap,
-    mem,
-    path::PathBuf,
-    sync::{Arc, OnceLock},
-};
+mod cmds;
+mod instance;
+mod manager;
+mod measure;
+mod utils;
 
+use alloc::sync::Arc;
 use indexmap::IndexMap;
 use manager::ParseManager;
 use nom::IResult;
 use regex::Regex;
+use std::{collections::HashMap, mem, path::PathBuf, sync::OnceLock};
 use utils::local_ast;
 
 use super::{
-    Files, ParseError, ParseErrorInner, Parsed,
-    builder::{
-        AST, LocalAST, Segment,
-        span::{EndReason, FileId, FileStorage, LocatedSpan, ParsedId, Pos, span},
-    },
+    Files, Parsed,
+    err::{ParseError, ParseErrorInner},
 };
-
-mod cmds;
-mod instance;
-mod manager;
-mod utils;
+use crate::{
+    ast::{ASTBuilder, LocalAST, Segment},
+    span::{EndReason, FileId, FileStorage, LocatedSpan, ParsedId, Pos, span},
+};
 
 #[inline]
 pub fn ast(
@@ -30,8 +27,8 @@ pub fn ast(
     loaded: IndexMap<FileId, Option<Pos>>,
     work_dir: PathBuf,
     mut i: LocatedSpan,
-) -> IResult<LocatedSpan, AST> {
-    let mut ast = AST::new();
+) -> IResult<LocatedSpan, ASTBuilder> {
+    let mut ast = ASTBuilder::new();
     loop {
         log::trace!("\n{:?}", i.fragment());
         let _ast;
@@ -137,9 +134,9 @@ async fn include(
 }
 
 /// When ParseError come form the included file,
-/// also return the AST, to recover the error
-fn error2ast(err: ParseError) -> AST {
-    let mut ast = AST::new();
+/// also return the ASTBuilder, to recover the error
+fn error2ast(err: ParseError) -> ASTBuilder {
+    let mut ast = ASTBuilder::new();
     let mut local = LocalAST::default();
     local.errors.push(err);
     ast.segments.push(Segment::Local(Box::new(local)));
@@ -181,7 +178,7 @@ pub async fn top(mut path: PathBuf) -> (Parsed, Files) {
     };
     manager.wait(done_rx).await;
     let mut guard = manager.file_storage.lock().await;
-    let mut file_storage: FileStorage<AST> = mem::take(&mut *guard);
+    let mut file_storage: FileStorage<ASTBuilder> = mem::take(&mut *guard);
     file_storage.update_ctx(&parsed_id, file_ctx, res);
     (
         Parsed {

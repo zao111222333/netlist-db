@@ -1,15 +1,15 @@
-use super::super::{
-    builder::{
-        instance::{
-            BJT, Capacitor, Current, CurrentSource, Diode, Inductor, Instance, InstanceCtx, MOSFET,
-            PWL, Resistor, Subckt, TimeValuePoint, Voltage, VoltageSource,
-        },
-        span::LocatedSpan,
+use super::utils::{
+    key_value, loss_sep, many0_dummyfirst, multiline_sep, name, name_char, name_str, ports_params,
+    value,
+};
+use crate::{
+    instance::{
+        BJTBuilder, CapacitorBuilder, CurrentBuilder, CurrentSourceBuilder, DiodeBuilder,
+        InductorBuilder, InstanceBuilder, InstanceCtxBuilder, MOSFETBuilder, PWLBuilder,
+        ResistorBuilder, SubcktBuilder, TimeValuePointBuilder, VoltageBuilder,
+        VoltageSourceBuilder,
     },
-    parser::utils::{
-        key_value, loss_sep, many0_dummyfirst, multiline_sep, name, name_char, name_str,
-        ports_params, value,
-    },
+    span::LocatedSpan,
 };
 use nom::{
     IResult, Parser,
@@ -20,7 +20,7 @@ use nom::{
 };
 
 #[inline]
-pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
+pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, InstanceBuilder> {
     let first_char;
     let name;
     (i, (first_char, name)) = name_char(i)?;
@@ -35,9 +35,9 @@ pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
         b'd' => _diode,
         b'x' => _subckt,
         r#type => {
-            return map(ports_params, |(ports, params)| Instance {
+            return map(ports_params, |(ports, params)| InstanceBuilder {
                 name,
-                ctx: InstanceCtx::Unknown {
+                ctx: InstanceCtxBuilder::Unknown {
                     r#type,
                     ports,
                     params,
@@ -46,49 +46,49 @@ pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, Instance> {
             .parse_complete(i);
         }
     };
-    map(parser, |ctx| Instance { name, ctx }).parse_complete(i)
+    map(parser, |ctx| InstanceBuilder { name, ctx }).parse_complete(i)
 }
 
 #[inline]
-fn _resistor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _resistor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map(
         (
             multiline_sep(name),
             multiline_sep(name),
             multiline_sep(value),
         ),
-        |(n1, n2, value)| InstanceCtx::Resistor(Resistor { n1, n2, value }),
+        |(n1, n2, value)| InstanceCtxBuilder::Resistor(ResistorBuilder { n1, n2, value }),
     )
     .parse_complete(i)
 }
 #[inline]
-fn _capacitor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _capacitor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map(
         (
             multiline_sep(name),
             multiline_sep(name),
             multiline_sep(value),
         ),
-        |(n1, n2, value)| InstanceCtx::Capacitor(Capacitor { n1, n2, value }),
+        |(n1, n2, value)| InstanceCtxBuilder::Capacitor(CapacitorBuilder { n1, n2, value }),
     )
     .parse_complete(i)
 }
 #[inline]
-fn _inductor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _inductor(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map(
         (
             multiline_sep(name),
             multiline_sep(name),
             multiline_sep(value),
         ),
-        |(n1, n2, value)| InstanceCtx::Inductor(Inductor { n1, n2, value }),
+        |(n1, n2, value)| InstanceCtxBuilder::Inductor(InductorBuilder { n1, n2, value }),
     )
     .parse_complete(i)
 }
 #[inline]
-fn _mosfet(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _mosfet(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map_res(ports_params, |(ports, params)| match ports.len() {
-        4 => Ok(InstanceCtx::MOSFET(MOSFET {
+        4 => Ok(InstanceCtxBuilder::MOSFET(MOSFETBuilder {
             nd: ports[0],
             ng: ports[1],
             ns: ports[2],
@@ -96,7 +96,7 @@ fn _mosfet(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
             mname: ports[3],
             params,
         })),
-        5 => Ok(InstanceCtx::MOSFET(MOSFET {
+        5 => Ok(InstanceCtxBuilder::MOSFET(MOSFETBuilder {
             nd: ports[0],
             ng: ports[1],
             ns: ports[2],
@@ -113,9 +113,9 @@ fn _mosfet(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
     .parse_complete(i)
 }
 #[inline]
-fn _bjt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _bjt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map_res(ports_params, |(ports, params)| match ports.len() {
-        4 => Ok(InstanceCtx::BJT(BJT {
+        4 => Ok(InstanceCtxBuilder::BJT(BJTBuilder {
             nc: ports[0],
             nb: ports[1],
             ne: ports[2],
@@ -123,7 +123,7 @@ fn _bjt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
             mname: ports[3],
             params,
         })),
-        5 => Ok(InstanceCtx::BJT(BJT {
+        5 => Ok(InstanceCtxBuilder::BJT(BJTBuilder {
             nc: ports[0],
             nb: ports[1],
             ne: ports[2],
@@ -140,9 +140,9 @@ fn _bjt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
     .parse_complete(i)
 }
 #[inline]
-fn _diode(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _diode(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map_res(ports_params, |(ports, params)| match ports.len() {
-        3 => Ok(InstanceCtx::Diode(Diode {
+        3 => Ok(InstanceCtxBuilder::Diode(DiodeBuilder {
             nplus: ports[0],
             nminus: ports[1],
             mname: ports[2],
@@ -157,10 +157,10 @@ fn _diode(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
     .parse_complete(i)
 }
 #[inline]
-fn _subckt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _subckt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map_res(ports_params, |(mut ports, params)| {
         if let Some(cktname) = ports.pop() {
-            Ok(InstanceCtx::Subckt(Subckt {
+            Ok(InstanceCtxBuilder::Subckt(SubcktBuilder {
                 ports,
                 cktname,
                 params,
@@ -172,7 +172,7 @@ fn _subckt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
     .parse_complete(i)
 }
 #[inline]
-fn _pwl(i: LocatedSpan) -> IResult<LocatedSpan, PWL> {
+fn _pwl(i: LocatedSpan) -> IResult<LocatedSpan, PWLBuilder> {
     map_res(
         (
             multiline_sep(name_str),
@@ -191,10 +191,10 @@ fn _pwl(i: LocatedSpan) -> IResult<LocatedSpan, PWL> {
                     if points.len() % 2 != 0 {
                         Err("points should be 2N numbers")
                     } else {
-                        Ok(PWL {
+                        Ok(PWLBuilder {
                             points: points
                                 .chunks_exact(2)
-                                .map(|values| TimeValuePoint {
+                                .map(|values| TimeValuePointBuilder {
                                     time: values[0],
                                     value: values[1],
                                 })
@@ -213,38 +213,38 @@ fn _pwl(i: LocatedSpan) -> IResult<LocatedSpan, PWL> {
     .parse_complete(i)
 }
 #[inline]
-fn _voltage(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _voltage(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map(
         (
             multiline_sep(name),
             multiline_sep(name),
             alt((
                 map(many1(multiline_sep(key_value)), |params| {
-                    VoltageSource::Params(params)
+                    VoltageSourceBuilder::Params(params)
                 }),
-                map(_pwl, VoltageSource::PWL),
-                map(multiline_sep(value), VoltageSource::Value),
+                map(_pwl, VoltageSourceBuilder::PWL),
+                map(multiline_sep(value), VoltageSourceBuilder::Value),
             )),
         ),
-        |(n1, n2, source)| InstanceCtx::Voltage(Voltage { n1, n2, source }),
+        |(n1, n2, source)| InstanceCtxBuilder::Voltage(VoltageBuilder { n1, n2, source }),
     )
     .parse_complete(i)
 }
 #[inline]
-fn _current(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtx> {
+fn _current(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
     map(
         (
             multiline_sep(name),
             multiline_sep(name),
             alt((
                 map(many1(multiline_sep(key_value)), |params| {
-                    CurrentSource::Params(params)
+                    CurrentSourceBuilder::Params(params)
                 }),
-                map(_pwl, CurrentSource::PWL),
-                map(multiline_sep(value), CurrentSource::Value),
+                map(_pwl, CurrentSourceBuilder::PWL),
+                map(multiline_sep(value), CurrentSourceBuilder::Value),
             )),
         ),
-        |(n1, n2, source)| InstanceCtx::Current(Current { n1, n2, source }),
+        |(n1, n2, source)| InstanceCtxBuilder::Current(CurrentBuilder { n1, n2, source }),
     )
     .parse_complete(i)
 }

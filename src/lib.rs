@@ -1,49 +1,25 @@
-#![expect(clippy::upper_case_acronyms)]
 extern crate alloc;
+pub mod ast;
+pub mod instance;
+pub mod parser;
 
 mod _impl_display;
 mod builder;
 mod err;
-pub mod instance;
-pub mod parser;
+mod span;
 
 use alloc::borrow::Cow;
-use builder::{
-    Builder as _,
-    span::{FileId, ParsedId},
-};
-use err::{ParseError, ParseErrorInner};
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Parsed {
-    pub top_id: ParsedId,
-    pub id2idx: HashMap<FileId, ParsedId>,
-    pub inner: Vec<(FileId, builder::AST)>,
+    pub top_id: span::ParsedId,
+    pub id2idx: HashMap<span::FileId, span::ParsedId>,
+    pub inner: Vec<(span::FileId, ast::ASTBuilder)>,
 }
 #[derive(Debug)]
 pub struct Files {
     pub inner: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Value<'s> {
-    Num(f64),
-    Expr(Cow<'s, str>),
-}
-
-#[derive(Debug, Clone)]
-pub struct KeyValue<'s> {
-    pub k: Cow<'s, str>,
-    pub v: Value<'s>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Token<'s> {
-    KV(KeyValue<'s>),
-    Value(Value<'s>),
-    V(Cow<'s, str>),
-    I(Cow<'s, str>),
 }
 
 /// ``` spice
@@ -57,71 +33,36 @@ pub struct Subckt<'s> {
     pub name: Cow<'s, str>,
     /// subckt/model name is the last arg
     pub ports: Vec<Cow<'s, str>>,
-    pub params: Vec<KeyValue<'s>>,
+    pub params: Vec<ast::KeyValue<'s>>,
     pub ast: AST<'s>,
 }
 
-#[derive(Debug, Clone)]
-pub struct General<'s> {
-    pub cmd: builder::GeneralCmd,
-    pub tokens: Vec<Token<'s>>,
+#[derive(Debug, Clone, Default)]
+pub struct AST<'s> {
+    pub subckt: Vec<Subckt<'s>>,
+    pub instance: Vec<instance::Instance<'s>>,
+    pub model: Vec<ast::Model<'s>>,
+    pub param: Vec<ast::KeyValue<'s>>,
+    pub option: Vec<(Cow<'s, str>, Option<ast::Value<'s>>)>,
+    /// transient initial conditions
+    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/ic.htm
+    ///
+    /// `node, val, [subckt]`
+    pub init_condition: Vec<(Cow<'s, str>, ast::Value<'s>, Option<Cow<'s, str>>)>,
+    /// Initializes specified nodal voltages for DC operating point analysis and corrects convergence problems in DC analysis.
+    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/nodeset.htm
+    ///
+    /// `node, val, [subckt]`
+    pub nodeset: Vec<(Cow<'s, str>, ast::Value<'s>, Option<Cow<'s, str>>)>,
+    pub general: Vec<ast::General<'s>>,
+    pub data: Vec<ast::Data<'s>>,
+    pub unknwon: Vec<ast::Unknwon<'s>>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Unknwon<'s> {
-    pub cmd: Cow<'s, str>,
-    pub tokens: Vec<Token<'s>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Model<'s> {
-    pub name: Cow<'s, str>,
-    pub model_type: ModelType<'s>,
-    pub params: Vec<KeyValue<'s>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Data<'s> {
-    pub name: Cow<'s, str>,
-    pub values: DataValues<'s>,
-}
-
-#[derive(Debug, Clone)]
-pub enum DataValues<'s> {
-    InlineExpr {
-        params: Vec<Cow<'s, str>>,
-        values: Vec<Value<'s>>,
-    },
-    InlineNum {
-        params: Vec<Cow<'s, str>>,
-        values: Vec<f64>,
-    },
-    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/data.htm
-    /// Concatenated (series merging) data files to use.
-    MER(DataFiles<'s>),
-    /// Column-laminated (parallel merging) data files to use.
-    LAM(DataFiles<'s>),
-}
-#[derive(Debug, Clone)]
-pub struct DataFile<'s> {
-    pub file: Cow<'s, str>,
-    pub pname_col_num: Vec<PnameColNum<'s>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct PnameColNum<'s> {
-    pub pname: Cow<'s, str>,
-    pub col_num: usize,
-}
-#[derive(Debug, Clone)]
-pub struct DataFiles<'s> {
-    pub files: Vec<DataFile<'s>>,
-    pub out: Option<Cow<'s, str>>,
-}
 #[cfg(feature = "py")]
 use polars::{error::PolarsError, frame::DataFrame, prelude::Column};
-pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a DataValues<'s>);
-impl<'s> DataValues<'s> {
+pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a ast::DataValues<'s>);
+impl<'s> ast::DataValues<'s> {
     pub fn csv(&self) -> DataValuesCsv<'s, '_> {
         DataValuesCsv(self)
     }
@@ -158,92 +99,34 @@ impl<'s> DataValues<'s> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum ModelType<'s> {
-    /// operational amplifier model
-    AMP,
-    /// capacitor model
-    C,
-    /// magnetic core model
-    CORE,
-    /// diode model
-    D,
-    /// inductor model or magnetic core mutual inductor model
-    L,
-    /// n-channel JFET model
-    NJF,
-    /// n-channel MOSFET model
-    NMOS,
-    /// npn BJT model
-    NPN,
-    /// optimization model
-    OPT,
-    /// p-channel JFET model
-    PJF,
-    /// p-channel MOSFET model
-    PMOS,
-    /// pnp BJT model
-    PNP,
-    /// resistor model
-    R,
-    /// lossy transmission line model (lumped)
-    U,
-    /// lossy transmission line model
-    W,
-    /// S-parameter
-    S,
-    Unknown(Cow<'s, str>),
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct AST<'s> {
-    pub subckt: Vec<Subckt<'s>>,
-    pub instance: Vec<instance::Instance<'s>>,
-    pub model: Vec<Model<'s>>,
-    pub param: Vec<KeyValue<'s>>,
-    pub option: Vec<(Cow<'s, str>, Option<Value<'s>>)>,
-    /// transient initial conditions
-    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/ic.htm
-    ///
-    /// `node, val, [subckt]`
-    pub init_condition: Vec<(Cow<'s, str>, Value<'s>, Option<Cow<'s, str>>)>,
-    /// Initializes specified nodal voltages for DC operating point analysis and corrects convergence problems in DC analysis.
-    /// https://eda-cpu1.eias.junzhuo.site/~junzhuo/hspice/index.htm#page/hspice_14/nodeset.htm
-    ///
-    /// `node, val, [subckt]`
-    pub nodeset: Vec<(Cow<'s, str>, Value<'s>, Option<Cow<'s, str>>)>,
-    pub general: Vec<General<'s>>,
-    pub data: Vec<Data<'s>>,
-    pub unknwon: Vec<Unknwon<'s>>,
-}
-
-impl builder::AST {
+impl ast::ASTBuilder {
     #[expect(clippy::too_many_arguments)]
     fn build<'s>(
         &self,
         ast: &mut AST<'s>,
         has_err: &mut bool,
-        file_id: &FileId,
-        parsed_id: ParsedId,
+        file_id: &span::FileId,
+        parsed_id: span::ParsedId,
         files: &'s Files,
         parsed: &Parsed,
     ) {
+        use builder::Builder as _;
         fn build_local<'s>(
-            local_ast: &builder::LocalAST,
+            local_ast: &ast::LocalAST,
             ast: &mut AST<'s>,
             has_err: &mut bool,
             file: &'s str,
-            file_id: &FileId,
-            parsed_id: ParsedId,
+            file_id: &span::FileId,
+            parsed_id: span::ParsedId,
             files: &'s Files,
             parsed: &Parsed,
         ) {
             fn build_subckt<'s>(
-                s: &builder::Subckt,
+                s: &ast::SubcktBuilder,
                 has_err: &mut bool,
                 file: &'s str,
-                file_id: &FileId,
-                parsed_id: ParsedId,
+                file_id: &span::FileId,
+                parsed_id: span::ParsedId,
                 files: &'s Files,
                 parsed: &Parsed,
             ) -> Subckt<'s> {
@@ -288,12 +171,12 @@ impl builder::AST {
         let file = &files.inner[parsed_id.0];
         for seg in &self.segments {
             match seg {
-                builder::Segment::Local(local_ast) => {
+                ast::Segment::Local(local_ast) => {
                     build_local(
                         local_ast, ast, has_err, file, file_id, parsed_id, files, parsed,
                     );
                 }
-                builder::Segment::Include(ast_res) => {
+                ast::Segment::Include(ast_res) => {
                     let ast_res = ast_res.get().unwrap();
                     match ast_res {
                         Ok(parsed_id) => {

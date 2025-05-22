@@ -2,13 +2,13 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, oneshot};
 
-use super::super::builder::{AST, span::FileStorage};
+use crate::{ast::ASTBuilder, span::FileStorage};
 
 #[derive(Debug)]
 pub struct ParseManager {
     active_tasks: AtomicUsize,
     done_tx: Mutex<Option<oneshot::Sender<()>>>,
-    pub file_storage: Mutex<FileStorage<AST>>,
+    pub file_storage: Mutex<FileStorage<ASTBuilder>>,
 }
 
 impl ParseManager {

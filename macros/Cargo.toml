@@ -1,0 +1,21 @@
+# cargo publish --registry crates-io -p liberty-macros
+[package]
+name = "netlist-macros"
+description = "`netlist` macros"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+authors.workspace = true
+readme.workspace = true
+repository.workspace = true
+documentation.workspace = true
+categories.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+syn = { version = "2.0.15", features = ["extra-traits"]}
+quote = "1.0"

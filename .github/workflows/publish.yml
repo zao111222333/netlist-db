@@ -9,7 +9,7 @@ permissions:
   contents: write
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: "1.85.0"
+  RUST_VERSION: "1.86.0"
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -31,10 +31,7 @@ jobs:
       - name: cargo login
         run: cargo login ${{ secrets.CRATES_IO_API_TOKEN }}
       - name: cargo publich
-        run: |
-         VERSION=${{ needs.prepare.outputs.VERSION }}
-         sed -i "/\[workspace.package\]/,/version/ s/version = \"[^\"]*\"/version = \"$VERSION\"/" Cargo.toml
-         cargo publish --allow-dirty --registry crates-io
+        run: .github/workflows/publish.sh ${{ needs.prepare.outputs.VERSION }}
   build-wheel-macos:
     runs-on: macos-latest
     steps:

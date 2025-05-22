@@ -1,4 +1,4 @@
-use ::netlist_db::{Value, parser::top};
+use ::netlist_db::{ast::Value, parser::top};
 use pyo3::prelude::*;
 use pyo3_polars::PyDataFrame;
 use std::{collections::HashMap, path::PathBuf};

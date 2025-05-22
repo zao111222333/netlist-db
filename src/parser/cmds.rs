@@ -1,10 +1,9 @@
-use super::super::{
-    builder::{
-        Value,
-        span::{LocatedSpan, Span},
-    },
-    parser::utils::{loss_sep, multiline_sep, name, name_str, v, value},
+use crate::{
+    ast::ValueBuilder,
+    span::{LocatedSpan, Span},
 };
+
+use super::super::parser::utils::{loss_sep, multiline_sep, name, name_str, v, value};
 use nom::{
     IResult, Parser,
     character::char,
@@ -30,9 +29,9 @@ fn subckt(i: LocatedSpan) -> IResult<LocatedSpan, Span> {
 #[inline]
 pub(super) fn init_condition(
     i: LocatedSpan,
-) -> IResult<LocatedSpan, impl Iterator<Item = (Span, Value, Option<Span>)>> {
+) -> IResult<LocatedSpan, impl Iterator<Item = (Span, ValueBuilder, Option<Span>)>> {
     #[inline]
-    fn node_volt(i: LocatedSpan) -> IResult<LocatedSpan, (Span, Value)> {
+    fn node_volt(i: LocatedSpan) -> IResult<LocatedSpan, (Span, ValueBuilder)> {
         map(
             (v, loss_sep, char('='), loss_sep, value),
             |(node, _, _, _, val)| (node, val),
@@ -52,9 +51,9 @@ pub(super) fn init_condition(
 #[inline]
 pub(super) fn nodeset(
     i: LocatedSpan,
-) -> IResult<LocatedSpan, impl Iterator<Item = (Span, Value, Option<Span>)>> {
+) -> IResult<LocatedSpan, impl Iterator<Item = (Span, ValueBuilder, Option<Span>)>> {
     #[inline]
-    fn node_volt(i: LocatedSpan) -> IResult<LocatedSpan, (Span, Value)> {
+    fn node_volt(i: LocatedSpan) -> IResult<LocatedSpan, (Span, ValueBuilder)> {
         map(
             (name, loss_sep, opt(char('=')), loss_sep, value),
             |(node, _, _, _, val)| (node, val),

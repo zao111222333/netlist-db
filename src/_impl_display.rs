@@ -72,7 +72,7 @@ impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for Multiline
     }
 }
 
-impl fmt::Display for Value<'_> {
+impl fmt::Display for ast::Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Num(float) => write!(f, "{}", FloatDisplay(float)),
@@ -80,13 +80,13 @@ impl fmt::Display for Value<'_> {
         }
     }
 }
-impl fmt::Display for KeyValue<'_> {
+impl fmt::Display for ast::KeyValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}={}", self.k, self.v)
     }
 }
 
-impl fmt::Display for Token<'_> {
+impl fmt::Display for ast::Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::KV(key_value) => write!(f, "{key_value}"),
@@ -97,7 +97,7 @@ impl fmt::Display for Token<'_> {
     }
 }
 
-impl fmt::Display for ModelType<'_> {
+impl fmt::Display for ast::ModelType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AMP => write!(f, "AMP"),
@@ -120,7 +120,7 @@ impl fmt::Display for ModelType<'_> {
         }
     }
 }
-impl fmt::Display for DataFiles<'_> {
+impl fmt::Display for ast::DataFiles<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -144,17 +144,17 @@ impl fmt::Display for DataFiles<'_> {
     }
 }
 
-impl fmt::Display for Data<'_> {
+impl fmt::Display for ast::Data<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, ".DATA {}", self.name)?;
         match &self.values {
-            DataValues::InlineExpr { params, values } => write!(
+            ast::DataValues::InlineExpr { params, values } => write!(
                 f,
                 "\n+ {} DATAFORM{}",
                 InlineDispaly(params, Display::fmt, ' '),
                 WrapDispaly(values, Display::fmt, "+ ", ' ', params.len())
             )?,
-            DataValues::InlineNum { params, values } => write!(
+            ast::DataValues::InlineNum { params, values } => write!(
                 f,
                 "\n+ {}{}",
                 InlineDispaly(params, Display::fmt, ' '),
@@ -166,8 +166,8 @@ impl fmt::Display for Data<'_> {
                     params.len()
                 )
             )?,
-            DataValues::MER(data_files) => write!(f, " MER{data_files}")?,
-            DataValues::LAM(data_files) => write!(f, " LAM{data_files}")?,
+            ast::DataValues::MER(data_files) => write!(f, " MER{data_files}")?,
+            ast::DataValues::LAM(data_files) => write!(f, " LAM{data_files}")?,
         }
         write!(f, "\n.ENDDATA")
     }
@@ -175,13 +175,13 @@ impl fmt::Display for Data<'_> {
 impl fmt::Display for DataValuesCsv<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            DataValues::InlineExpr { params, values } => write!(
+            ast::DataValues::InlineExpr { params, values } => write!(
                 f,
                 "{}{}",
                 InlineDispaly(params, Display::fmt, ','),
                 WrapDispaly(values, Display::fmt, "", ',', params.len())
             ),
-            DataValues::InlineNum { params, values } => write!(
+            ast::DataValues::InlineNum { params, values } => write!(
                 f,
                 "{}{}",
                 InlineDispaly(params, Display::fmt, ','),
@@ -193,8 +193,8 @@ impl fmt::Display for DataValuesCsv<'_, '_> {
                     params.len()
                 )
             ),
-            DataValues::MER(_) => unreachable!(),
-            DataValues::LAM(_) => unreachable!(),
+            ast::DataValues::MER(_) => unreachable!(),
+            ast::DataValues::LAM(_) => unreachable!(),
         }
     }
 }
@@ -354,7 +354,7 @@ impl fmt::Display for instance::Diode<'_> {
     }
 }
 
-impl fmt::Display for Model<'_> {
+impl fmt::Display for ast::Model<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -380,7 +380,7 @@ impl fmt::Display for Subckt<'_> {
     }
 }
 
-impl fmt::Display for Unknwon<'_> {
+impl fmt::Display for ast::Unknwon<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -390,7 +390,7 @@ impl fmt::Display for Unknwon<'_> {
         )
     }
 }
-impl fmt::Display for General<'_> {
+impl fmt::Display for ast::General<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -409,7 +409,8 @@ impl fmt::Display for AST<'_> {
                 ".OPTION {}",
                 WrapDispaly(
                     &self.option,
-                    |option: &(Cow<'_, str>, Option<Value<'_>>), f: &mut fmt::Formatter<'_>| {
+                    |option: &(Cow<'_, str>, Option<ast::Value<'_>>),
+                     f: &mut fmt::Formatter<'_>| {
                         if let Some(v) = &option.1 {
                             write!(f, "{}={v}", option.0)
                         } else {
@@ -437,7 +438,7 @@ impl fmt::Display for AST<'_> {
             "{}",
             MultilineDispaly(
                 &self.init_condition,
-                |ic: &(Cow<'_, str>, Value<'_>, Option<Cow<'_, str>>),
+                |ic: &(Cow<'_, str>, ast::Value<'_>, Option<Cow<'_, str>>),
                  f: &mut fmt::Formatter<'_>| {
                     write!(f, ".IC V({})={}", ic.0, ic.1)?;
                     if let Some(subckt) = &ic.2 {
@@ -453,7 +454,7 @@ impl fmt::Display for AST<'_> {
             "{}",
             MultilineDispaly(
                 &self.nodeset,
-                |ic: &(Cow<'_, str>, Value<'_>, Option<Cow<'_, str>>),
+                |ic: &(Cow<'_, str>, ast::Value<'_>, Option<Cow<'_, str>>),
                  f: &mut fmt::Formatter<'_>| {
                     write!(f, ".NODESET {}={}", ic.0, ic.1)?;
                     if let Some(subckt) = &ic.2 {
@@ -468,5 +469,11 @@ impl fmt::Display for AST<'_> {
         write!(f, "{}", MultilineDispaly(&self.general, Display::fmt))?;
         write!(f, "{}", MultilineDispaly(&self.unknwon, Display::fmt))?;
         Ok(())
+    }
+}
+
+impl fmt::Display for ast::GeneralCmd {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
