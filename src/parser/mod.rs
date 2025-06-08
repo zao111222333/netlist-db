@@ -93,7 +93,7 @@ async fn _include(
                 file_id,
                 ParseErrorInner::NoLibSection {
                     path: file_path,
-                    section: section,
+                    section,
                 }
                 .with(pos),
             ));
