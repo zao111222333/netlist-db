@@ -90,13 +90,13 @@ impl<Parsed> Default for FileStorage<Parsed> {
 }
 impl<Parsed: Default> FileStorage<Parsed> {
     pub fn existed(&self, file_id: &FileId) -> Option<ParsedId> {
-        log::debug!("load {}", file_id);
+        crate::debug!("load {}", file_id);
         self.id2idx.get(file_id).copied()
     }
     pub fn new_file(&mut self, file_id: FileId) -> ParsedId {
         match self.id2idx.entry(file_id) {
             Entry::Occupied(occupied) => {
-                log::warn!("already loaded {:?}", occupied.key());
+                crate::warn!("already loaded {:?}", occupied.key());
                 *occupied.get()
             }
             Entry::Vacant(vacant_entry) => {

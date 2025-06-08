@@ -1,3 +1,10 @@
+#[expect(unused_imports)]
+#[cfg(not(feature = "tracing"))]
+use log::{debug, error, info, trace, warn};
+#[expect(unused_imports)]
+#[cfg(feature = "tracing")]
+use tracing::{debug, error, info, trace, warn};
+
 extern crate alloc;
 pub mod ast;
 pub mod instance;

@@ -24,7 +24,7 @@ jobs:
           packages: musl-tools # provides musl-gcc
           version: 1.0
       - name: Build
-        run: cargo build --release --target x86_64-unknown-linux-musl --example parser
+        run: cargo build --release --target x86_64-unknown-linux-musl --example parser --features tracing
       - name: Prepare files
         run: |
           mv target/x86_64-unknown-linux-musl/release/examples/parser examples/parser

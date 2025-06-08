@@ -30,7 +30,7 @@ pub fn ast(
 ) -> IResult<LocatedSpan, ASTBuilder> {
     let mut ast = ASTBuilder::new();
     loop {
-        log::trace!("\n{:?}", i.fragment());
+        crate::trace!("\n{:?}", i.fragment());
         let _ast;
         let reason;
         (i, (_ast, reason)) = local_ast(i, &loaded, &manager, &work_dir)?;
@@ -238,7 +238,24 @@ fn match_lib(text: &str, section: &str) -> Option<(String, u32)> {
 }
 #[tokio::test]
 async fn test_top() {
-    _ = simple_logger::SimpleLogger::new().init();
+    #[cfg(not(feature = "tracing"))]
+    {
+        _ = simple_logger::SimpleLogger::new().init();
+    }
+    #[cfg(feature = "tracing")]
+    {
+        let subscriber = tracing_subscriber::FmtSubscriber::builder()
+            // .with_ansi(colored::control::SHOULD_COLORIZE.should_colorize())
+            .with_max_level(tracing::Level::DEBUG)
+            .with_target(false)
+            .with_file(true)
+            .with_line_number(true)
+            .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new(
+                "%FT%T".to_owned(),
+            ))
+            .finish();
+        _ = tracing::subscriber::set_global_default(subscriber);
+    }
     let (parsed, files) = parse_top(FileId::Include {
         path: PathBuf::from("tests/top.sp"),
     })

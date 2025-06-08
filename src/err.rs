@@ -223,7 +223,7 @@ impl ParseError {
                 }
             }
         }
-        log::error!(
+        crate::error!(
             "{}",
             ReportDisplay {
                 err: self,
