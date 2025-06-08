@@ -3,12 +3,14 @@ pub mod ast;
 pub mod instance;
 pub mod parser;
 
-mod _impl_display;
+pub mod _impl_display;
+mod _impl_hash;
 mod builder;
 mod err;
 mod span;
 
 use alloc::borrow::Cow;
+use indexmap::IndexSet;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -39,7 +41,7 @@ pub struct Subckt<'s> {
 
 #[derive(Debug, Clone, Default)]
 pub struct AST<'s> {
-    pub subckt: Vec<Subckt<'s>>,
+    pub subckt: IndexSet<Subckt<'s>>,
     pub instance: Vec<instance::Instance<'s>>,
     pub model: Vec<ast::Model<'s>>,
     pub param: Vec<ast::KeyValue<'s>>,
