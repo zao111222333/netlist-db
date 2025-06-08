@@ -1,10 +1,10 @@
-use ::netlist_db::{ast::Value, parser::top};
+use ::netlist_db::{FileId, ast::Value, parser::parse_top};
 use pyo3::prelude::*;
 use pyo3_polars::PyDataFrame;
 use std::{collections::HashMap, path::PathBuf};
 
 #[pyfunction]
-fn obtain_datas(file: &str) -> PyResult<HashMap<String, PyDataFrame>> {
+fn obtain_datas(path: PathBuf) -> PyResult<HashMap<String, PyDataFrame>> {
     _ = simple_logger::SimpleLogger::new()
         .with_level(log::LevelFilter::Info)
         .init();
@@ -12,7 +12,7 @@ fn obtain_datas(file: &str) -> PyResult<HashMap<String, PyDataFrame>> {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(async { top(PathBuf::from(file)).await });
+        .block_on(async { parse_top(FileId::Include { path }).await });
     let (ast, _has_err) = files.build(parsed);
     ast.data
         .iter()
@@ -27,7 +27,7 @@ fn obtain_datas(file: &str) -> PyResult<HashMap<String, PyDataFrame>> {
 }
 
 #[pyfunction]
-fn obtain_nodeset_top(file: &str) -> PyResult<HashMap<String, f64>> {
+fn obtain_nodeset_top(path: PathBuf) -> PyResult<HashMap<String, f64>> {
     _ = simple_logger::SimpleLogger::new()
         .with_level(log::LevelFilter::Info)
         .init();
@@ -35,7 +35,7 @@ fn obtain_nodeset_top(file: &str) -> PyResult<HashMap<String, f64>> {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(async { top(PathBuf::from(file)).await });
+        .block_on(async { parse_top(FileId::Include { path }).await });
     let (ast, _has_err) = files.build(parsed);
     Ok(ast
         .nodeset

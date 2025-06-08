@@ -17,8 +17,8 @@ Concurrent/Parallel SPICE (HSPICE) parser, under building.
 ## Example
 Download the [releases/latest/examples.zip](https://github.com/zao111222333/netlist-db/releases/latest/download/examples.zip), then
 ``` shell
-cd examples
-./parser_x86_64-unknown-linux-musl tests/top.sp
+cd examples_x86_64-unknown-linux-musl
+./parser tests/top.sp
 ```
 
 Or you can compile & run this example by
