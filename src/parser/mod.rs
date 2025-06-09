@@ -47,13 +47,13 @@ pub fn ast(
                 } else {
                     work_dir.join(file_name)
                 };
-                let pos = Pos::new(i);
+                let include_pos = Pos::new(i);
                 let mut loaded = loaded.clone();
-                if let Some((_, _pos)) = loaded.last_mut() {
-                    *_pos = pos
+                if let Some((_, _include_pos)) = loaded.last_mut() {
+                    *_include_pos = include_pos
                 }
                 manager.spawn_parse(async move {
-                    include(manager_clone, loaded, file_path, pos, section, res).await;
+                    include(manager_clone, loaded, file_path, section, include_pos, res).await;
                 });
             }
             EndReason::End => return Ok((i, ast)),
@@ -65,25 +65,23 @@ async fn _include(
     manager: Arc<ParseManager>,
     mut loaded: IndexMap<FileId, Option<Pos>>,
     file_id: FileId,
-    pos: Option<Pos>,
+    include_pos: Option<Pos>,
 ) -> Result<ParsedId, (FileId, ParseError)> {
-    let mut file_path = match &file_id {
-        FileId::Include { path } | FileId::Section { path, section: _ } => path.clone(),
-    };
+    let mut file_path = file_id.path().to_path_buf();
     if let Some(idx) = loaded.get_index_of(&file_id) {
         return Err((
             file_id,
-            ParseErrorInner::CircularDefinition(loaded, idx).with(pos),
+            ParseErrorInner::CircularDefinition(loaded, idx).with(include_pos),
         ));
     } else {
-        loaded.insert(file_id.clone(), pos);
+        loaded.insert(file_id.clone(), include_pos);
     }
     if let Some(parsed_id) = manager.file_storage.lock().await.existed(&file_id) {
         return Ok(parsed_id);
     }
     let contents = match tokio::fs::read_to_string(&file_path).await {
         Ok(contents) => contents,
-        Err(e) => return Err((file_id, ParseErrorInner::with(e.into(), pos))),
+        Err(e) => return Err((file_id, ParseErrorInner::with(e.into(), include_pos))),
     };
     let (line_off_set, file_ctx) = if let FileId::Section { path: _, section } = file_id.clone() {
         if let Some((file_ctx, line_off_set)) = match_lib(&contents, &section) {
@@ -95,7 +93,7 @@ async fn _include(
                     path: file_path,
                     section,
                 }
-                .with(pos),
+                .with(include_pos),
             ));
         }
     } else {
@@ -124,8 +122,8 @@ async fn include(
     manager: Arc<ParseManager>,
     loaded: IndexMap<FileId, Option<Pos>>,
     file_path: PathBuf,
-    pos: Option<Pos>,
     section: Option<String>,
+    include_pos: Option<Pos>,
     res: Arc<OnceLock<Result<ParsedId, ParseError>>>,
 ) {
     let file_id = if let Some(section) = section {
@@ -138,7 +136,7 @@ async fn include(
             path: file_path.clone(),
         }
     };
-    let _res = _include(manager, loaded, file_id, pos).await;
+    let _res = _include(manager, loaded, file_id, include_pos).await;
     res.set(_res.map_err(|(_, e)| e)).unwrap();
 }
 

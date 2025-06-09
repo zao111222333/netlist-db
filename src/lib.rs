@@ -1,3 +1,5 @@
+#[cfg(feature = "py")]
+mod py;
 #[expect(unused_imports)]
 #[cfg(not(feature = "tracing"))]
 use log::{debug, error, info, trace, warn};
@@ -70,45 +72,45 @@ pub struct AST<'s> {
     pub unknwon: Vec<ast::Unknwon<'s>>,
 }
 
-#[cfg(feature = "py")]
-use polars::{error::PolarsError, frame::DataFrame, prelude::Column};
-pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a ast::DataValues<'s>);
-impl<'s> ast::DataValues<'s> {
-    pub fn csv(&self) -> DataValuesCsv<'s, '_> {
-        DataValuesCsv(self)
-    }
-    #[cfg(feature = "py")]
-    pub fn dataframe(&self) -> Result<DataFrame, PolarsError> {
-        if let Self::InlineNum { params, values } = self {
-            let ncols = params.len();
-            if ncols == 0 {
-                return Err(PolarsError::ComputeError("Header is empty".into()));
-            }
-            if values.len() % ncols != 0 {
-                return Err(PolarsError::ComputeError(
-                    "Data length is not a multiple of the number of columns".into(),
-                ));
-            }
-            let nrows = values.len() / ncols;
-            let columns = params
-                .into_iter()
-                .enumerate()
-                .map(|(col_idx, name)| {
-                    Column::new(
-                        name.as_ref().into(),
-                        (0..nrows)
-                            .into_iter()
-                            .map(|row| values[row * ncols + col_idx])
-                            .collect::<Vec<f64>>(),
-                    )
-                })
-                .collect();
-            DataFrame::new(columns)
-        } else {
-            Err(PolarsError::ComputeError("Is not inline data".into()))
-        }
-    }
-}
+// #[cfg(feature = "py")]
+// use polars::{error::PolarsError, frame::DataFrame, prelude::Column};
+// pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a ast::DataValues<'s>);
+// impl<'s> ast::DataValues<'s> {
+//     pub fn csv(&self) -> DataValuesCsv<'s, '_> {
+//         DataValuesCsv(self)
+//     }
+//     #[cfg(feature = "py")]
+//     pub fn dataframe(&self) -> Result<DataFrame, PolarsError> {
+//         if let Self::InlineNum { params, values } = self {
+//             let ncols = params.len();
+//             if ncols == 0 {
+//                 return Err(PolarsError::ComputeError("Header is empty".into()));
+//             }
+//             if values.len() % ncols != 0 {
+//                 return Err(PolarsError::ComputeError(
+//                     "Data length is not a multiple of the number of columns".into(),
+//                 ));
+//             }
+//             let nrows = values.len() / ncols;
+//             let columns = params
+//                 .into_iter()
+//                 .enumerate()
+//                 .map(|(col_idx, name)| {
+//                     Column::new(
+//                         name.as_ref().into(),
+//                         (0..nrows)
+//                             .into_iter()
+//                             .map(|row| values[row * ncols + col_idx])
+//                             .collect::<Vec<f64>>(),
+//                     )
+//                 })
+//                 .collect();
+//             DataFrame::new(columns)
+//         } else {
+//             Err(PolarsError::ComputeError("Is not inline data".into()))
+//         }
+//     }
+// }
 
 impl ast::ASTBuilder {
     #[expect(clippy::too_many_arguments)]

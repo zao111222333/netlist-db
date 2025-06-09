@@ -183,29 +183,6 @@ impl fmt::Display for ast::Data<'_> {
         write!(f, "\n.ENDDATA")
     }
 }
-impl fmt::Display for DataValuesCsv<'_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            ast::DataValues::InlineExpr { params, values } => {
-                display_inline(f, params.iter(), Display::fmt, ',')?;
-                display_wrap(f, values.iter(), Display::fmt, "", ',', params.len())
-            }
-            ast::DataValues::InlineNum { params, values } => {
-                display_inline(f, params.iter(), Display::fmt, ',')?;
-                display_wrap(
-                    f,
-                    values.iter(),
-                    |float: &f64, f: &mut fmt::Formatter<'_>| write!(f, "{}", FloatDisplay(float)),
-                    "",
-                    ',',
-                    params.len(),
-                )
-            }
-            ast::DataValues::MER(_) => unreachable!(),
-            ast::DataValues::LAM(_) => unreachable!(),
-        }
-    }
-}
 
 impl fmt::Display for instance::Instance<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

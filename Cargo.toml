@@ -13,11 +13,13 @@ categories = ["development-tools"]
 description = "Concurrent/Parallel SPICE (HSPICE) parser, under building."
 
 [workspace.dependencies]
-polars = { version = "0.46", features = ["fmt", "dtype-date", "timezones", "lazy"], default-features = false }
-polars-arrow = { version = "0.46", default-features = false }
-pyo3 = { version = "0.23", features = ["abi3-py37"] }
-pyo3-polars = { version = "0.20", features = ["derive", "lazy"] }
-tokio = { version = "1.43.0", features = ["full"] }
+# polars = { version = "0.48", features = ["fmt", "dtype-date", "timezones", "lazy"], default-features = false }
+# polars-arrow = { version = "0.48", default-features = false }
+# pyo3-polars = { version = "0.21", features = ["derive", "lazy"] }
+pyo3 = { version = "0.25", features = ["abi3-py37"] }
+pyo3-stub-gen = { version ="0.8", default-features = false }
+# pyo3-stub-gen = { path = "../../pyo3-stub-gen-main/pyo3-stub-gen", default-features = false }
+tokio = { version = "1.45", features = ["full"] }
 simple_logger = "5.0.0"
 log = "0.4.25"
 fast-float2 = "0.2.3"
@@ -48,7 +50,8 @@ include = ["/src", "/examples", "README.md"]
 
 [features]
 defualt = []
-py = ['dep:pyo3', 'dep:polars', 'dep:pyo3-polars', 'dep:polars-arrow']
+py = ['dep:pyo3', 'dep:pyo3-stub-gen']
+# py = ['dep:pyo3', 'dep:polars', 'dep:pyo3-polars', 'dep:polars-arrow', 'dep:pyo3-stub-gen']
 tracing = ["dep:tracing"]
 
 [dependencies]
@@ -65,9 +68,10 @@ tokio.workspace = true
 anstyle.workspace = true
 colored.workspace = true
 pyo3 = { workspace = true, optional = true }
-pyo3-polars = { workspace = true, optional = true }
-polars = { workspace = true, optional = true }
-polars-arrow = { workspace = true, optional = true }
+pyo3-stub-gen = { workspace = true, optional = true }
+# pyo3-polars = { workspace = true, optional = true }
+# polars = { workspace = true, optional = true }
+# polars-arrow = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
 
 [dev-dependencies]

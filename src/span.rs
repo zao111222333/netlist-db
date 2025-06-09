@@ -53,8 +53,7 @@ impl fmt::Display for FileId {
 impl FileId {
     pub fn path(&self) -> &Path {
         match self {
-            FileId::Include { path } => path,
-            FileId::Section { path, section: _ } => path,
+            FileId::Include { path } | FileId::Section { path, section: _ } => path,
         }
     }
 }
@@ -170,13 +169,11 @@ mod test {
 
     fn parse_foobar(s: LocatedSpan) -> IResult<LocatedSpan, Token> {
         let (s, _) = take_until("foo")(s)?;
-        // let (s, pos) = position(s)?;
         let (s, foo) = tag("foo")(s)?;
         let (s, bar) = tag("bar")(s)?;
         Ok((
             s,
             Token {
-                // pos: pos.into(),
                 _foo: foo.into(),
                 _bar: bar.into(),
             },
