@@ -30,7 +30,7 @@ pub fn ast(
 ) -> IResult<LocatedSpan, ASTBuilder> {
     let mut ast = ASTBuilder::new();
     loop {
-        log::trace!("\n{:?}", i.fragment());
+        crate::trace!("\n{:?}", i.fragment());
         let _ast;
         let reason;
         (i, (_ast, reason)) = local_ast(i, &loaded, &manager, &work_dir)?;
@@ -47,13 +47,13 @@ pub fn ast(
                 } else {
                     work_dir.join(file_name)
                 };
-                let pos = Pos::new(i);
+                let include_pos = Pos::new(i);
                 let mut loaded = loaded.clone();
-                if let Some((_, _pos)) = loaded.last_mut() {
-                    *_pos = pos
+                if let Some((_, _include_pos)) = loaded.last_mut() {
+                    *_include_pos = include_pos
                 }
                 manager.spawn_parse(async move {
-                    include(manager_clone, loaded, file_path, pos, section, res).await;
+                    include(manager_clone, loaded, file_path, section, include_pos, res).await;
                 });
             }
             EndReason::End => return Ok((i, ast)),
@@ -64,40 +64,37 @@ pub fn ast(
 async fn _include(
     manager: Arc<ParseManager>,
     mut loaded: IndexMap<FileId, Option<Pos>>,
-    mut file_path: PathBuf,
-    pos: Option<Pos>,
-    section: Option<String>,
-) -> Result<ParsedId, ParseError> {
-    let file_id = if let Some(section) = section {
-        FileId::Section {
-            path: file_path.clone(),
-            section,
-        }
-    } else {
-        FileId::Include {
-            path: file_path.clone(),
-        }
-    };
+    file_id: FileId,
+    include_pos: Option<Pos>,
+) -> Result<ParsedId, (FileId, ParseError)> {
+    let mut file_path = file_id.path().to_path_buf();
     if let Some(idx) = loaded.get_index_of(&file_id) {
-        return Err(ParseErrorInner::CircularDefinition(loaded, idx).with(pos));
+        return Err((
+            file_id,
+            ParseErrorInner::CircularDefinition(loaded, idx).with(include_pos),
+        ));
     } else {
-        loaded.insert(file_id.clone(), pos);
+        loaded.insert(file_id.clone(), include_pos);
     }
     if let Some(parsed_id) = manager.file_storage.lock().await.existed(&file_id) {
         return Ok(parsed_id);
     }
-    let contents = tokio::fs::read_to_string(&file_path)
-        .await
-        .map_err(|e| ParseErrorInner::with(e.into(), pos))?;
-    let (line_off_set, file_ctx) = if let FileId::Section { path: _, section } = &file_id {
-        if let Some((file_ctx, line_off_set)) = match_lib(&contents, section) {
+    let contents = match tokio::fs::read_to_string(&file_path).await {
+        Ok(contents) => contents,
+        Err(e) => return Err((file_id, ParseErrorInner::with(e.into(), include_pos))),
+    };
+    let (line_off_set, file_ctx) = if let FileId::Section { path: _, section } = file_id.clone() {
+        if let Some((file_ctx, line_off_set)) = match_lib(&contents, &section) {
             (line_off_set, file_ctx)
         } else {
-            return Err(ParseErrorInner::NoLibSection {
-                path: file_path,
-                section: section.clone(),
-            }
-            .with(pos));
+            return Err((
+                file_id,
+                ParseErrorInner::NoLibSection {
+                    path: file_path,
+                    section,
+                }
+                .with(include_pos),
+            ));
         }
     } else {
         (0, contents)
@@ -125,12 +122,22 @@ async fn include(
     manager: Arc<ParseManager>,
     loaded: IndexMap<FileId, Option<Pos>>,
     file_path: PathBuf,
-    pos: Option<Pos>,
     section: Option<String>,
+    include_pos: Option<Pos>,
     res: Arc<OnceLock<Result<ParsedId, ParseError>>>,
 ) {
-    let _res = _include(manager, loaded, file_path, pos, section).await;
-    res.set(_res).unwrap();
+    let file_id = if let Some(section) = section {
+        FileId::Section {
+            path: file_path.clone(),
+            section,
+        }
+    } else {
+        FileId::Include {
+            path: file_path.clone(),
+        }
+    };
+    let _res = _include(manager, loaded, file_id, include_pos).await;
+    res.set(_res.map_err(|(_, e)| e)).unwrap();
 }
 
 /// When ParseError come form the included file,
@@ -150,7 +157,7 @@ fn error2parsed(file_id: FileId, err: ParseError) -> (Parsed, Files) {
     id2idx.insert(file_id.clone(), parsed_id);
     (
         Parsed {
-            top_id: parsed_id,
+            top_ids: vec![parsed_id],
             id2idx,
             inner: vec![(file_id, ast)],
         },
@@ -160,29 +167,52 @@ fn error2parsed(file_id: FileId, err: ParseError) -> (Parsed, Files) {
     )
 }
 
-pub async fn top(mut path: PathBuf) -> (Parsed, Files) {
+pub async fn parse_top(file_id: FileId) -> (Parsed, Files) {
     let (manager, done_rx) = ParseManager::new();
-    let file_id = FileId::Include { path: path.clone() };
-    let file_ctx = match tokio::fs::read_to_string(&path).await {
-        Ok(s) => s,
-        Err(e) => return error2parsed(file_id, ParseErrorInner::with(e.into(), None)),
-    };
-    let mut loaded = IndexMap::with_capacity(1);
-    loaded.insert(file_id.clone(), None);
-    let parsed_id = manager.file_storage.lock().await.new_file(file_id);
-    path.pop();
-    let input = span(&file_ctx, 0);
-    let res = match ast(manager.clone(), loaded, path, input) {
-        Ok((_, res)) => res,
-        Err(e) => error2ast(e.into()),
+    let parsed_id = match _include(manager.clone(), IndexMap::with_capacity(1), file_id, None).await
+    {
+        Ok(parsed_id) => parsed_id,
+        Err((file_id, e)) => return error2parsed(file_id, e),
     };
     manager.wait(done_rx).await;
     let mut guard = manager.file_storage.lock().await;
-    let mut file_storage: FileStorage<ASTBuilder> = mem::take(&mut *guard);
-    file_storage.update_ctx(&parsed_id, file_ctx, res);
+    let file_storage: FileStorage<ASTBuilder> = mem::take(&mut *guard);
     (
         Parsed {
-            top_id: parsed_id,
+            top_ids: vec![parsed_id],
+            id2idx: file_storage.id2idx,
+            inner: file_storage.parsed,
+        },
+        Files {
+            inner: file_storage.file,
+        },
+    )
+}
+
+pub async fn parse_top_multi<I: Iterator<Item = FileId>>(file_ids: I) -> (Parsed, Files) {
+    let (manager, done_rx) = ParseManager::new();
+    let handles: Vec<_> = file_ids
+        .into_iter()
+        .map(|file_id| {
+            tokio::spawn({
+                let manager = manager.clone();
+                async move { _include(manager, IndexMap::with_capacity(1), file_id, None).await }
+            })
+        })
+        .collect();
+    let mut top_ids = Vec::with_capacity(handles.len());
+    for handle in handles {
+        match handle.await.unwrap() {
+            Ok(parsed_id) => top_ids.push(parsed_id),
+            Err((file_id, e)) => return error2parsed(file_id, e),
+        }
+    }
+    manager.wait(done_rx).await;
+    let mut guard = manager.file_storage.lock().await;
+    let file_storage: FileStorage<ASTBuilder> = mem::take(&mut *guard);
+    (
+        Parsed {
+            top_ids,
             id2idx: file_storage.id2idx,
             inner: file_storage.parsed,
         },
@@ -206,8 +236,28 @@ fn match_lib(text: &str, section: &str) -> Option<(String, u32)> {
 }
 #[tokio::test]
 async fn test_top() {
-    _ = simple_logger::SimpleLogger::new().init();
-    let (parsed, files) = top(PathBuf::from("tests/top.sp")).await;
+    #[cfg(not(feature = "tracing"))]
+    {
+        _ = simple_logger::SimpleLogger::new().init();
+    }
+    #[cfg(feature = "tracing")]
+    {
+        let subscriber = tracing_subscriber::FmtSubscriber::builder()
+            // .with_ansi(colored::control::SHOULD_COLORIZE.should_colorize())
+            .with_max_level(tracing::Level::DEBUG)
+            .with_target(false)
+            .with_file(true)
+            .with_line_number(true)
+            .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new(
+                "%FT%T".to_owned(),
+            ))
+            .finish();
+        _ = tracing::subscriber::set_global_default(subscriber);
+    }
+    let (parsed, files) = parse_top(FileId::Include {
+        path: PathBuf::from("tests/top.sp"),
+    })
+    .await;
     println!("{parsed:?}");
     println!("{files:?}");
 }

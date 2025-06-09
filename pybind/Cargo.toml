@@ -10,10 +10,10 @@ crate-type = ["cdylib"]
 
 [dependencies]
 netlist-db = { path = "..", features = ['py'] }
-polars.workspace = true
-polars-arrow.workspace = true
+# polars.workspace = true
+# polars-arrow.workspace = true
 pyo3.workspace = true
-pyo3-polars.workspace = true
+# pyo3-polars.workspace = true
 tokio.workspace = true
 simple_logger.workspace = true
 log.workspace = true

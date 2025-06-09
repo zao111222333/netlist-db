@@ -1,19 +1,32 @@
+#[cfg(feature = "py")]
+mod py;
+#[expect(unused_imports)]
+#[cfg(not(feature = "tracing"))]
+use log::{debug, error, info, trace, warn};
+#[expect(unused_imports)]
+#[cfg(feature = "tracing")]
+use tracing::{debug, error, info, trace, warn};
+
 extern crate alloc;
 pub mod ast;
 pub mod instance;
 pub mod parser;
 
-mod _impl_display;
+pub mod _impl_display;
+mod _impl_hash;
 mod builder;
 mod err;
 mod span;
 
 use alloc::borrow::Cow;
+use ast::ASTBuilder;
+use indexmap::IndexSet;
+pub use span::{FileId, ParsedId};
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Parsed {
-    pub top_id: span::ParsedId,
+    pub top_ids: Vec<span::ParsedId>,
     pub id2idx: HashMap<span::FileId, span::ParsedId>,
     pub inner: Vec<(span::FileId, ast::ASTBuilder)>,
 }
@@ -39,7 +52,7 @@ pub struct Subckt<'s> {
 
 #[derive(Debug, Clone, Default)]
 pub struct AST<'s> {
-    pub subckt: Vec<Subckt<'s>>,
+    pub subckt: IndexSet<Subckt<'s>>,
     pub instance: Vec<instance::Instance<'s>>,
     pub model: Vec<ast::Model<'s>>,
     pub param: Vec<ast::KeyValue<'s>>,
@@ -59,45 +72,45 @@ pub struct AST<'s> {
     pub unknwon: Vec<ast::Unknwon<'s>>,
 }
 
-#[cfg(feature = "py")]
-use polars::{error::PolarsError, frame::DataFrame, prelude::Column};
-pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a ast::DataValues<'s>);
-impl<'s> ast::DataValues<'s> {
-    pub fn csv(&self) -> DataValuesCsv<'s, '_> {
-        DataValuesCsv(self)
-    }
-    #[cfg(feature = "py")]
-    pub fn dataframe(&self) -> Result<DataFrame, PolarsError> {
-        if let Self::InlineNum { params, values } = self {
-            let ncols = params.len();
-            if ncols == 0 {
-                return Err(PolarsError::ComputeError("Header is empty".into()));
-            }
-            if values.len() % ncols != 0 {
-                return Err(PolarsError::ComputeError(
-                    "Data length is not a multiple of the number of columns".into(),
-                ));
-            }
-            let nrows = values.len() / ncols;
-            let columns = params
-                .into_iter()
-                .enumerate()
-                .map(|(col_idx, name)| {
-                    Column::new(
-                        name.as_ref().into(),
-                        (0..nrows)
-                            .into_iter()
-                            .map(|row| values[row * ncols + col_idx])
-                            .collect::<Vec<f64>>(),
-                    )
-                })
-                .collect();
-            DataFrame::new(columns)
-        } else {
-            Err(PolarsError::ComputeError("Is not inline data".into()))
-        }
-    }
-}
+// #[cfg(feature = "py")]
+// use polars::{error::PolarsError, frame::DataFrame, prelude::Column};
+// pub struct DataValuesCsv<'s, 'a>(pub(crate) &'a ast::DataValues<'s>);
+// impl<'s> ast::DataValues<'s> {
+//     pub fn csv(&self) -> DataValuesCsv<'s, '_> {
+//         DataValuesCsv(self)
+//     }
+//     #[cfg(feature = "py")]
+//     pub fn dataframe(&self) -> Result<DataFrame, PolarsError> {
+//         if let Self::InlineNum { params, values } = self {
+//             let ncols = params.len();
+//             if ncols == 0 {
+//                 return Err(PolarsError::ComputeError("Header is empty".into()));
+//             }
+//             if values.len() % ncols != 0 {
+//                 return Err(PolarsError::ComputeError(
+//                     "Data length is not a multiple of the number of columns".into(),
+//                 ));
+//             }
+//             let nrows = values.len() / ncols;
+//             let columns = params
+//                 .into_iter()
+//                 .enumerate()
+//                 .map(|(col_idx, name)| {
+//                     Column::new(
+//                         name.as_ref().into(),
+//                         (0..nrows)
+//                             .into_iter()
+//                             .map(|row| values[row * ncols + col_idx])
+//                             .collect::<Vec<f64>>(),
+//                     )
+//                 })
+//                 .collect();
+//             DataFrame::new(columns)
+//         } else {
+//             Err(PolarsError::ComputeError("Is not inline data".into()))
+//         }
+//     }
+// }
 
 impl ast::ASTBuilder {
     #[expect(clippy::too_many_arguments)]
@@ -108,7 +121,8 @@ impl ast::ASTBuilder {
         file_id: &span::FileId,
         parsed_id: span::ParsedId,
         files: &'s Files,
-        parsed: &Parsed,
+        parsed_id2idx: &HashMap<FileId, ParsedId>,
+        parsed_inner: &Vec<(FileId, ASTBuilder)>,
     ) {
         use builder::Builder as _;
         fn build_local<'s>(
@@ -119,7 +133,8 @@ impl ast::ASTBuilder {
             file_id: &span::FileId,
             parsed_id: span::ParsedId,
             files: &'s Files,
-            parsed: &Parsed,
+            parsed_id2idx: &HashMap<FileId, ParsedId>,
+            parsed_inner: &Vec<(FileId, ASTBuilder)>,
         ) {
             fn build_subckt<'s>(
                 s: &ast::SubcktBuilder,
@@ -128,11 +143,19 @@ impl ast::ASTBuilder {
                 file_id: &span::FileId,
                 parsed_id: span::ParsedId,
                 files: &'s Files,
-                parsed: &Parsed,
+                parsed_id2idx: &HashMap<FileId, ParsedId>,
+                parsed_inner: &Vec<(FileId, ASTBuilder)>,
             ) -> Subckt<'s> {
                 let mut ast = AST::default();
-                s.ast
-                    .build(&mut ast, has_err, file_id, parsed_id, files, parsed);
+                s.ast.build(
+                    &mut ast,
+                    has_err,
+                    file_id,
+                    parsed_id,
+                    files,
+                    parsed_id2idx,
+                    parsed_inner,
+                );
                 Subckt {
                     name: s.name.build(file),
                     ports: s.ports.build(file),
@@ -140,12 +163,18 @@ impl ast::ASTBuilder {
                     ast,
                 }
             }
-            ast.subckt.extend(
-                local_ast
-                    .subckt
-                    .iter()
-                    .map(|s| build_subckt(s, has_err, file, file_id, parsed_id, files, parsed)),
-            );
+            ast.subckt.extend(local_ast.subckt.iter().map(|s| {
+                build_subckt(
+                    s,
+                    has_err,
+                    file,
+                    file_id,
+                    parsed_id,
+                    files,
+                    parsed_id2idx,
+                    parsed_inner,
+                )
+            }));
             ast.instance
                 .extend(local_ast.instance.iter().map(|b| b.build(file)));
             ast.model
@@ -173,15 +202,31 @@ impl ast::ASTBuilder {
             match seg {
                 ast::Segment::Local(local_ast) => {
                     build_local(
-                        local_ast, ast, has_err, file, file_id, parsed_id, files, parsed,
+                        local_ast,
+                        ast,
+                        has_err,
+                        file,
+                        file_id,
+                        parsed_id,
+                        files,
+                        parsed_id2idx,
+                        parsed_inner,
                     );
                 }
                 ast::Segment::Include(ast_res) => {
                     let ast_res = ast_res.get().unwrap();
                     match ast_res {
                         Ok(parsed_id) => {
-                            let (file_id, _ast) = &parsed.inner[parsed_id.0];
-                            _ast.build(ast, has_err, file_id, *parsed_id, files, parsed);
+                            let (file_id, _ast) = &parsed_inner[parsed_id.0];
+                            _ast.build(
+                                ast,
+                                has_err,
+                                file_id,
+                                *parsed_id,
+                                files,
+                                parsed_id2idx,
+                                parsed_inner,
+                            );
                         }
                         Err(e) => {
                             e.report(has_err, file_id, file);
@@ -198,15 +243,18 @@ impl Files {
     pub fn build(&self, parsed: Parsed) -> (AST<'_>, bool) {
         let mut ast = AST::default();
         let mut has_err = false;
-        let (file_id, _ast) = &parsed.inner[parsed.top_id.0];
-        _ast.build(
-            &mut ast,
-            &mut has_err,
-            file_id,
-            parsed.top_id,
-            self,
-            &parsed,
-        );
+        for top_id in parsed.top_ids {
+            let (file_id, _ast) = &parsed.inner[top_id.0];
+            _ast.build(
+                &mut ast,
+                &mut has_err,
+                file_id,
+                top_id,
+                self,
+                &parsed.id2idx,
+                &parsed.inner,
+            );
+        }
         (ast, has_err)
     }
 }

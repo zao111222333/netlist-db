@@ -53,8 +53,7 @@ impl fmt::Display for FileId {
 impl FileId {
     pub fn path(&self) -> &Path {
         match self {
-            FileId::Include { path } => path,
-            FileId::Section { path, section: _ } => path,
+            FileId::Include { path } | FileId::Section { path, section: _ } => path,
         }
     }
 }
@@ -90,13 +89,13 @@ impl<Parsed> Default for FileStorage<Parsed> {
 }
 impl<Parsed: Default> FileStorage<Parsed> {
     pub fn existed(&self, file_id: &FileId) -> Option<ParsedId> {
-        log::debug!("load {}", file_id);
+        crate::debug!("load {}", file_id);
         self.id2idx.get(file_id).copied()
     }
     pub fn new_file(&mut self, file_id: FileId) -> ParsedId {
         match self.id2idx.entry(file_id) {
             Entry::Occupied(occupied) => {
-                log::warn!("already loaded {:?}", occupied.key());
+                crate::warn!("already loaded {:?}", occupied.key());
                 *occupied.get()
             }
             Entry::Vacant(vacant_entry) => {
@@ -170,13 +169,11 @@ mod test {
 
     fn parse_foobar(s: LocatedSpan) -> IResult<LocatedSpan, Token> {
         let (s, _) = take_until("foo")(s)?;
-        // let (s, pos) = position(s)?;
         let (s, foo) = tag("foo")(s)?;
         let (s, bar) = tag("bar")(s)?;
         Ok((
             s,
             Token {
-                // pos: pos.into(),
                 _foo: foo.into(),
                 _bar: bar.into(),
             },

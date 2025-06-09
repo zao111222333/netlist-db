@@ -635,7 +635,7 @@ pub(super) fn local_ast<'a>(
 ) -> IResult<LocatedSpan<'a>, (LocalAST, EndReason<'a>)> {
     let mut ast = LocalAST::default();
     loop {
-        log::trace!("\n{:?}", i.fragment());
+        crate::trace!("\n{:?}", i.fragment());
         (i, _) = comment_space_newline(i)?;
         if i.is_empty() {
             return Ok((i, (ast, EndReason::End)));

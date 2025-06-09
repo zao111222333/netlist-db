@@ -1,11 +1,11 @@
-// cargo run --example parser -- tests/top.sp
+// cargo run --example parser_multi -- tests/data.sp tests/lib.sp
 // Avoid musl's default allocator due to lackluster performance
 // https://nickb.dev/blog/default-musl-allocator-considered-harmful-to-performance
 #[cfg(target_env = "musl")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use netlist_db::{FileId, parser::parse_top};
+use netlist_db::{FileId, parser::parse_top_multi};
 use std::{env, path::PathBuf, process::exit, time::Instant};
 #[tokio::main]
 async fn main() {
@@ -28,9 +28,9 @@ async fn main() {
         _ = tracing::subscriber::set_global_default(subscriber);
     }
     let now = Instant::now();
-    let (parsed, files) = parse_top(FileId::Include {
-        path: PathBuf::from(env::args().nth(1).unwrap()),
-    })
+    let (parsed, files) = parse_top_multi(env::args().skip(1).map(|path| FileId::Include {
+        path: PathBuf::from(path),
+    }))
     .await;
     let elapsed_parse = now.elapsed();
     let now = Instant::now();
