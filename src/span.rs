@@ -39,6 +39,21 @@ pub enum FileId {
     Section { path: PathBuf, section: String },
 }
 
+impl From<PathBuf> for FileId {
+    fn from(path: PathBuf) -> Self {
+        Self::Include { path }
+    }
+}
+
+impl From<(PathBuf, String)> for FileId {
+    fn from(value: (PathBuf, String)) -> Self {
+        Self::Section {
+            path: value.0,
+            section: value.1,
+        }
+    }
+}
+
 impl fmt::Display for FileId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

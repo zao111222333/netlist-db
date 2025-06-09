@@ -1,9 +1,9 @@
 use crate::span::{FileId, LocatedSpan, Pos, Span};
 
-use anstyle::{AnsiColor, Color, Style};
 use core::fmt;
 use indexmap::IndexMap;
 use nom::error::ErrorKind;
+use nu_ansi_term::{Color, Style};
 use std::path::PathBuf;
 
 impl From<nom::Err<nom::error::Error<LocatedSpan<'_>>>> for ParseError {
@@ -72,13 +72,9 @@ impl ParseError {
                 use super::builder::Builder as _;
                 let styles = if colored::control::SHOULD_COLORIZE.should_colorize() {
                     Styles {
-                        msg: Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta))),
-                        typ: Style::new()
-                            .fg_color(Some(Color::Ansi(AnsiColor::BrightMagenta)))
-                            .bold(),
-                        err: Style::new()
-                            .fg_color(Some(AnsiColor::BrightRed.into()))
-                            .bold(),
+                        msg: Style::new().fg(Color::LightMagenta),
+                        typ: Style::new().fg(Color::LightMagenta).bold(),
+                        err: Style::new().fg(Color::LightRed).bold(),
                     }
                 } else {
                     Styles {
@@ -90,17 +86,17 @@ impl ParseError {
                 write!(
                     f,
                     "\nFile {}\"{}\"{}",
-                    styles.msg.render(),
+                    styles.msg.prefix(),
                     self.file_id.path().display(),
-                    styles.msg.render_reset()
+                    styles.msg.suffix()
                 )?;
                 if let Some(pos) = self.err.pos {
                     write!(
                         f,
                         ", line {}{}{}",
-                        styles.msg.render(),
+                        styles.msg.prefix(),
                         pos.line_num,
-                        styles.msg.render_reset()
+                        styles.msg.suffix()
                     )?;
                     let span = unsafe {
                         LocatedSpan::new_from_raw_offset(
@@ -115,7 +111,7 @@ impl ParseError {
                         for _ in 0..span.get_column() - 1 {
                             write!(f, " ")?;
                         }
-                        write!(f, "{}<-{}", styles.err.render(), styles.err.render_reset())?;
+                        write!(f, "{}<-{}", styles.err.prefix(), styles.err.suffix())?;
                     }
                 }
                 writeln!(f)?;
@@ -124,42 +120,42 @@ impl ParseError {
                         writeln!(
                             f,
                             "{}Error{}: {}{error}{}",
-                            styles.typ.render(),
-                            styles.typ.render_reset(),
-                            styles.msg.render(),
-                            styles.msg.render_reset()
+                            styles.typ.prefix(),
+                            styles.typ.suffix(),
+                            styles.msg.prefix(),
+                            styles.msg.suffix()
                         )
                     }
                     ParseErrorInner::NoLibSection { path, section } => {
                         writeln!(
                             f,
                             "{}Error{}: {}Can NOT find section `{section}` in file \"{}\"{}",
-                            styles.typ.render(),
-                            styles.typ.render_reset(),
-                            styles.msg.render(),
+                            styles.typ.prefix(),
+                            styles.typ.suffix(),
+                            styles.msg.prefix(),
                             path.display(),
-                            styles.msg.render_reset()
+                            styles.msg.suffix()
                         )
                     }
                     ParseErrorInner::Nom(e) => {
                         write!(
                             f,
                             "{}ParserError{}: {}{e:?}{}",
-                            styles.typ.render(),
-                            styles.typ.render_reset(),
-                            styles.msg.render(),
-                            styles.msg.render_reset()
+                            styles.typ.prefix(),
+                            styles.typ.suffix(),
+                            styles.msg.prefix(),
+                            styles.msg.suffix()
                         )
                     }
                     ParseErrorInner::Unknown(span) => {
                         writeln!(
                             f,
                             "{}SyntaxError{}: {}Unknwon command `{}`{}",
-                            styles.typ.render(),
-                            styles.typ.render_reset(),
-                            styles.msg.render(),
+                            styles.typ.prefix(),
+                            styles.typ.suffix(),
+                            styles.msg.prefix(),
                             span.build(self.file),
-                            styles.msg.render_reset()
+                            styles.msg.suffix()
                         )
                     }
                     ParseErrorInner::CircularDefinition(index_set, idx) => {
@@ -193,20 +189,20 @@ impl ParseError {
                         writeln!(
                             f,
                             "{}CircularDefinition{}: {}Detect circular definition in {}{}",
-                            styles.typ.render(),
-                            styles.typ.render_reset(),
-                            styles.msg.render(),
+                            styles.typ.prefix(),
+                            styles.typ.suffix(),
+                            styles.msg.prefix(),
                             FileDisplay::new(circular_file),
-                            styles.msg.render_reset()
+                            styles.msg.suffix()
                         )?;
                         for (i, file) in index_set.iter().enumerate() {
                             if *idx == i {
                                 writeln!(
                                     f,
                                     "{} * {}{}\n     ↓",
-                                    styles.err.render(),
+                                    styles.err.prefix(),
                                     FileDisplay::new(file),
-                                    styles.err.render_reset()
+                                    styles.err.suffix()
                                 )?;
                             } else {
                                 writeln!(f, "   {}\n     ↓", FileDisplay::new(file))?;
@@ -215,9 +211,9 @@ impl ParseError {
                         writeln!(
                             f,
                             "{} * {}{}",
-                            styles.err.render(),
+                            styles.err.prefix(),
                             FileDisplay::new(circular_file),
-                            styles.err.render_reset()
+                            styles.err.suffix()
                         )
                     }
                 }

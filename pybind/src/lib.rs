@@ -54,7 +54,7 @@ use pyo3::prelude::*;
 // }
 
 #[pymodule]
-fn netlist_db(m: &Bound<PyModule>) -> PyResult<()> {
+fn netlist_db(_m: &Bound<PyModule>) -> PyResult<()> {
     // m.add_wrapped(wrap_pyfunction!(obtain_datas)).unwrap();
     // m.add_wrapped(wrap_pyfunction!(obtain_nodeset_top)).unwrap();
     Ok(())

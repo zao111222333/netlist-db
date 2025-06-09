@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use super::*;
 
-struct FloatDisplay<'a>(&'a f64);
+pub struct FloatDisplay<'a>(pub &'a f64);
 impl fmt::Display for FloatDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:.7e}", self.0)
@@ -23,12 +23,13 @@ impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for OptionDis
 
 pub fn display_wrap<
     'a,
+    W: fmt::Write,
     T: 'a,
     I: 'a + Iterator<Item = &'a T>,
     SEP: fmt::Display,
-    F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result,
+    F: Fn(&T, &mut W) -> fmt::Result,
 >(
-    f: &mut fmt::Formatter<'_>,
+    f: &mut W,
     iter: I,
     fmt_one: F,
     line_sep: SEP,
@@ -51,11 +52,12 @@ pub fn display_wrap<
 
 pub fn display_inline<
     'a,
+    W: fmt::Write,
     T: 'a,
     I: 'a + Iterator<Item = &'a T>,
-    F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result,
+    F: Fn(&T, &mut W) -> fmt::Result,
 >(
-    f: &mut fmt::Formatter<'_>,
+    f: &mut W,
     iter: I,
     fmt_one: F,
     sep: char,
@@ -73,11 +75,12 @@ pub fn display_inline<
 
 pub fn display_multiline<
     'a,
+    W: fmt::Write,
     T: 'a,
     I: 'a + Iterator<Item = &'a T>,
-    F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result,
+    F: Fn(&T, &mut W) -> fmt::Result,
 >(
-    f: &mut fmt::Formatter<'_>,
+    f: &mut W,
     iter: I,
     fmt_one: F,
 ) -> fmt::Result {
@@ -139,7 +142,7 @@ impl fmt::Display for ast::ModelType<'_> {
 impl fmt::Display for ast::DataFiles<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_multiline(f, self.files.iter(), |file, f| {
-            write!(f, "+ FILE='{}'", file.file)?;
+            write!(f, "+ FILE='{}' ", file.file)?;
             display_inline(
                 f,
                 file.pname_col_num.iter(),
@@ -186,7 +189,7 @@ impl fmt::Display for ast::Data<'_> {
 
 impl fmt::Display for instance::Instance<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.name, self.ctx,)
+        write!(f, "{} {}", self.name, self.ctx)
     }
 }
 
@@ -207,7 +210,6 @@ impl fmt::Display for instance::InstanceCtx<'_> {
                 ports,
                 params,
             } => {
-                write!(f, " ")?;
                 display_inline(f, ports.iter(), Display::fmt, ' ')?;
                 write!(f, " ")?;
                 display_inline(f, params.iter(), Display::fmt, ' ')
@@ -218,7 +220,6 @@ impl fmt::Display for instance::InstanceCtx<'_> {
 
 impl fmt::Display for instance::Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, " ")?;
         display_inline(f, self.ports.iter(), Display::fmt, ' ')?;
         write!(f, " {} ", self.cktname,)?;
         display_inline(f, self.params.iter(), Display::fmt, ' ')
@@ -297,7 +298,7 @@ impl fmt::Display for instance::MOSFET<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} {} {} ",
+            "{} {} {}{} {} ",
             self.nd,
             self.ng,
             self.ns,
@@ -312,7 +313,7 @@ impl fmt::Display for instance::BJT<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} {} {} ",
+            "{} {} {}{} {} ",
             self.nc,
             self.nb,
             self.ne,
