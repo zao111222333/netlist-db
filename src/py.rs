@@ -33,10 +33,10 @@ impl<'py> IntoPyObject<'py> for FileId {
 impl FromPyObject<'_> for FileId {
     #[inline]
     fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok((path, section)) = ob.extract::<(PathBuf, String)>() {
-            return Ok(Self::Section { path, section });
+        if let Ok(path_section) = ob.extract::<(PathBuf, String)>() {
+            return Ok(path_section.into());
         }
         let path = ob.extract::<PathBuf>()?;
-        Ok(Self::Include { path })
+        Ok(path.into())
     }
 }

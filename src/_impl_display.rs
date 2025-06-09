@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use super::*;
 
-struct FloatDisplay<'a>(&'a f64);
+pub struct FloatDisplay<'a>(pub &'a f64);
 impl fmt::Display for FloatDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:.7e}", self.0)
@@ -23,12 +23,13 @@ impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for OptionDis
 
 pub fn display_wrap<
     'a,
+    W: fmt::Write,
     T: 'a,
     I: 'a + Iterator<Item = &'a T>,
     SEP: fmt::Display,
-    F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result,
+    F: Fn(&T, &mut W) -> fmt::Result,
 >(
-    f: &mut fmt::Formatter<'_>,
+    f: &mut W,
     iter: I,
     fmt_one: F,
     line_sep: SEP,
@@ -51,11 +52,12 @@ pub fn display_wrap<
 
 pub fn display_inline<
     'a,
+    W: fmt::Write,
     T: 'a,
     I: 'a + Iterator<Item = &'a T>,
-    F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result,
+    F: Fn(&T, &mut W) -> fmt::Result,
 >(
-    f: &mut fmt::Formatter<'_>,
+    f: &mut W,
     iter: I,
     fmt_one: F,
     sep: char,
@@ -73,11 +75,12 @@ pub fn display_inline<
 
 pub fn display_multiline<
     'a,
+    W: fmt::Write,
     T: 'a,
     I: 'a + Iterator<Item = &'a T>,
-    F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result,
+    F: Fn(&T, &mut W) -> fmt::Result,
 >(
-    f: &mut fmt::Formatter<'_>,
+    f: &mut W,
     iter: I,
     fmt_one: F,
 ) -> fmt::Result {
