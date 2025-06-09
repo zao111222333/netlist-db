@@ -142,7 +142,7 @@ impl fmt::Display for ast::ModelType<'_> {
 impl fmt::Display for ast::DataFiles<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_multiline(f, self.files.iter(), |file, f| {
-            write!(f, "+ FILE='{}'", file.file)?;
+            write!(f, "+ FILE='{}' ", file.file)?;
             display_inline(
                 f,
                 file.pname_col_num.iter(),
@@ -189,7 +189,7 @@ impl fmt::Display for ast::Data<'_> {
 
 impl fmt::Display for instance::Instance<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.name, self.ctx,)
+        write!(f, "{} {}", self.name, self.ctx)
     }
 }
 
@@ -210,7 +210,6 @@ impl fmt::Display for instance::InstanceCtx<'_> {
                 ports,
                 params,
             } => {
-                write!(f, " ")?;
                 display_inline(f, ports.iter(), Display::fmt, ' ')?;
                 write!(f, " ")?;
                 display_inline(f, params.iter(), Display::fmt, ' ')
@@ -221,7 +220,6 @@ impl fmt::Display for instance::InstanceCtx<'_> {
 
 impl fmt::Display for instance::Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, " ")?;
         display_inline(f, self.ports.iter(), Display::fmt, ' ')?;
         write!(f, " {} ", self.cktname,)?;
         display_inline(f, self.params.iter(), Display::fmt, ' ')
@@ -300,7 +298,7 @@ impl fmt::Display for instance::MOSFET<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} {} {} ",
+            "{} {} {}{} {} ",
             self.nd,
             self.ng,
             self.ns,
@@ -315,7 +313,7 @@ impl fmt::Display for instance::BJT<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} {} {} ",
+            "{} {} {}{} {} ",
             self.nc,
             self.nb,
             self.ne,
