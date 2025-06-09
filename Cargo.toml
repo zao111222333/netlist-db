@@ -17,8 +17,8 @@ description = "Concurrent/Parallel SPICE (HSPICE) parser, under building."
 # polars-arrow = { version = "0.48", default-features = false }
 # pyo3-polars = { version = "0.21", features = ["derive", "lazy"] }
 pyo3 = { version = "0.25", features = ["abi3-py37"] }
-pyo3-stub-gen = { version ="0.8", default-features = false }
-# pyo3-stub-gen = { path = "../../pyo3-stub-gen-main/pyo3-stub-gen", default-features = false }
+# pyo3-stub-gen = { version ="0.8", default-features = false }
+pyo3-stub-gen = { path = "../../pyo3-stub-gen-main/pyo3-stub-gen", default-features = false }
 tokio = { version = "1.45", features = ["full"] }
 simple_logger = "5.0.0"
 log = "0.4.25"
@@ -28,8 +28,8 @@ nom = "8"
 nom_locate = "5"
 regex = "1.11"
 thiserror = "2"
-anstyle = "1"
-colored = "2.1"
+nu-ansi-term = "0.50"
+colored = "3"
 itertools = "0.14"
 tracing = "0.1.41"
 tracing-subscriber = { version="0.3.0", features=["chrono"] }
@@ -65,7 +65,7 @@ regex.workspace = true
 thiserror.workspace = true
 itertools.workspace = true
 tokio.workspace = true
-anstyle.workspace = true
+nu-ansi-term.workspace = true
 colored.workspace = true
 pyo3 = { workspace = true, optional = true }
 pyo3-stub-gen = { workspace = true, optional = true }
