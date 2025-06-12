@@ -29,11 +29,11 @@ pub fn display_wrap<
     T,
     I: Iterator<Item = T>,
     SEP: fmt::Display,
-    F: Fn(T, &mut W) -> fmt::Result,
+    F: FnMut(T, &mut W) -> fmt::Result,
 >(
     f: &mut W,
     iter: I,
-    fmt_one: F,
+    mut fmt_one: F,
     line_sep: SEP,
     item_sep: char,
     wrap_size: usize,
@@ -52,10 +52,15 @@ pub fn display_wrap<
     Ok(())
 }
 
-pub fn display_inline<W: fmt::Write, T, I: Iterator<Item = T>, F: Fn(T, &mut W) -> fmt::Result>(
+pub fn display_inline<
+    W: fmt::Write,
+    T,
+    I: Iterator<Item = T>,
+    F: FnMut(T, &mut W) -> fmt::Result,
+>(
     f: &mut W,
     iter: I,
-    fmt_one: F,
+    mut fmt_one: F,
     sep: char,
 ) -> fmt::Result {
     let mut iter = iter.into_iter();
@@ -73,11 +78,11 @@ pub fn display_multiline<
     W: fmt::Write,
     T,
     I: Iterator<Item = T>,
-    F: Fn(T, &mut W) -> fmt::Result,
+    F: FnMut(T, &mut W) -> fmt::Result,
 >(
     f: &mut W,
     iter: I,
-    fmt_one: F,
+    mut fmt_one: F,
 ) -> fmt::Result {
     for t in iter.into_iter() {
         writeln!(f)?;
