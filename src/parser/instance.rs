@@ -35,11 +35,11 @@ pub(super) fn instance(mut i: LocatedSpan) -> IResult<LocatedSpan, InstanceBuild
         b'd' => _diode,
         b'x' => _subckt,
         r#type => {
-            return map(ports_params, |(ports, params)| InstanceBuilder {
+            return map(ports_params, |(nodes, params)| InstanceBuilder {
                 name,
                 ctx: InstanceCtxBuilder::Unknown {
                     r#type,
-                    ports,
+                    nodes,
                     params,
                 },
             })
@@ -158,10 +158,10 @@ fn _diode(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
 }
 #[inline]
 fn _subckt(i: LocatedSpan) -> IResult<LocatedSpan, InstanceCtxBuilder> {
-    map_res(ports_params, |(mut ports, params)| {
-        if let Some(cktname) = ports.pop() {
+    map_res(ports_params, |(mut nodes, params)| {
+        if let Some(cktname) = nodes.pop() {
             Ok(InstanceCtxBuilder::Subckt(SubcktBuilder {
-                ports,
+                nodes,
                 cktname,
                 params,
             }))

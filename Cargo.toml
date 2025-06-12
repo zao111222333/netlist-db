@@ -1,7 +1,7 @@
 [workspace]
 members = ["pybind", "macros"]
 [workspace.package]
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 license = "MIT"
 authors = ["Junzhuo <zhou@junzhuo.site>"]
@@ -30,6 +30,7 @@ regex = "1.11"
 thiserror = "2"
 nu-ansi-term = "0.50"
 colored = "3"
+lexical-core = "1.0"
 itertools = "0.14"
 tracing = "0.1.41"
 tracing-subscriber = { version="0.3.0", features=["chrono"] }
@@ -62,6 +63,7 @@ log.workspace = true
 nom.workspace = true
 nom_locate.workspace = true
 regex.workspace = true
+lexical-core.workspace = true
 thiserror.workspace = true
 itertools.workspace = true
 tokio.workspace = true
