@@ -3,14 +3,17 @@ use std::fmt::Display;
 
 use super::*;
 
-pub struct FloatDisplay<'a>(pub &'a f64);
-impl fmt::Display for FloatDisplay<'_> {
+pub struct FloatDisplay(pub f64);
+impl fmt::Display for FloatDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:.7e}", self.0)
     }
 }
 
-struct OptionDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result>(&'a Option<T>, F);
+pub struct OptionDispaly<'a, T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result>(
+    pub &'a Option<T>,
+    pub F,
+);
 impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for OptionDispaly<'_, T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(t) = self.0 {
@@ -22,12 +25,11 @@ impl<T, F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result> Display for OptionDis
 }
 
 pub fn display_wrap<
-    'a,
     W: fmt::Write,
-    T: 'a,
-    I: 'a + Iterator<Item = &'a T>,
+    T,
+    I: Iterator<Item = T>,
     SEP: fmt::Display,
-    F: Fn(&T, &mut W) -> fmt::Result,
+    F: Fn(T, &mut W) -> fmt::Result,
 >(
     f: &mut W,
     iter: I,
@@ -50,13 +52,7 @@ pub fn display_wrap<
     Ok(())
 }
 
-pub fn display_inline<
-    'a,
-    W: fmt::Write,
-    T: 'a,
-    I: 'a + Iterator<Item = &'a T>,
-    F: Fn(&T, &mut W) -> fmt::Result,
->(
+pub fn display_inline<W: fmt::Write, T, I: Iterator<Item = T>, F: Fn(T, &mut W) -> fmt::Result>(
     f: &mut W,
     iter: I,
     fmt_one: F,
@@ -74,11 +70,10 @@ pub fn display_inline<
 }
 
 pub fn display_multiline<
-    'a,
     W: fmt::Write,
-    T: 'a,
-    I: 'a + Iterator<Item = &'a T>,
-    F: Fn(&T, &mut W) -> fmt::Result,
+    T,
+    I: Iterator<Item = T>,
+    F: Fn(T, &mut W) -> fmt::Result,
 >(
     f: &mut W,
     iter: I,
@@ -94,7 +89,7 @@ pub fn display_multiline<
 impl fmt::Display for ast::Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Num(float) => write!(f, "{}", FloatDisplay(float)),
+            Self::Num(float) => write!(f, "{}", FloatDisplay(*float)),
             Self::Expr(expr) => write!(f, "'{expr}'"),
         }
     }
@@ -174,7 +169,7 @@ impl fmt::Display for ast::Data<'_> {
                 display_wrap(
                     f,
                     values.iter(),
-                    |float: &f64, f: &mut fmt::Formatter<'_>| write!(f, "{}", FloatDisplay(float)),
+                    |float: &f64, f: &mut fmt::Formatter<'_>| write!(f, "{}", FloatDisplay(*float)),
                     "+ ",
                     ' ',
                     params.len(),
