@@ -4,7 +4,7 @@ use core::fmt;
 use indexmap::IndexMap;
 use nom::error::ErrorKind;
 use nu_ansi_term::{Color, Style};
-use std::path::PathBuf;
+use std::{io, path::PathBuf};
 
 impl From<nom::Err<nom::error::Error<LocatedSpan<'_>>>> for ParseError {
     #[inline]
@@ -14,6 +14,14 @@ impl From<nom::Err<nom::error::Error<LocatedSpan<'_>>>> for ParseError {
             nom::Err::Failure(e) | nom::Err::Error(e) => {
                 ParseErrorInner::Nom(e.code).record(e.input)
             }
+        }
+    }
+}
+impl From<io::Error> for ParseError {
+    fn from(value: io::Error) -> Self {
+        Self {
+            pos: None,
+            err: ParseErrorInner::IO(value),
         }
     }
 }

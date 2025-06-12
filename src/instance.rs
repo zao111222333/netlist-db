@@ -1,3 +1,5 @@
+use std::{borrow::Cow, collections::HashSet};
+
 use crate::{
     ast::{KeyValueBuilder, ValueBuilder},
     self_builder,
@@ -29,9 +31,35 @@ pub enum InstanceCtxBuilder {
     Subckt(SubcktBuilder),
     Unknown {
         r#type: u8,
-        ports: Vec<Span>,
+        nodes: Vec<Span>,
         params: Vec<KeyValueBuilder>,
     },
+}
+impl<'s> InstanceCtx<'s> {
+    pub fn append_nodes<'a>(&'a self, nodes: &mut HashSet<&'a Cow<'s, str>>) {
+        match self {
+            InstanceCtx::Resistor(r) => nodes.extend([&r.n1, &r.n2]),
+            InstanceCtx::Capacitor(c) => nodes.extend([&c.n1, &c.n2]),
+            InstanceCtx::Inductor(i) => nodes.extend([&i.n1, &i.n2]),
+            InstanceCtx::Voltage(v) => nodes.extend([&v.n1, &v.n2]),
+            InstanceCtx::Current(c) => nodes.extend([&c.n1, &c.n2]),
+            InstanceCtx::MOSFET(m) => {
+                nodes.extend([&m.ng, &m.nd, &m.ns]);
+                nodes.extend(m.nb.as_ref())
+            }
+            InstanceCtx::BJT(b) => {
+                nodes.extend([&b.nb, &b.nc, &b.ne]);
+                nodes.extend(b.ns.as_ref())
+            }
+            InstanceCtx::Diode(d) => nodes.extend([&d.nminus, &d.nplus]),
+            InstanceCtx::Subckt(x) => nodes.extend(x.nodes.iter()),
+            InstanceCtx::Unknown {
+                r#type: _,
+                nodes: _nodes,
+                params: _,
+            } => nodes.extend(_nodes.iter()),
+        }
+    }
 }
 #[derive(Debug, Clone, Builder)]
 pub struct ResistorBuilder {
@@ -53,7 +81,7 @@ pub struct InductorBuilder {
 }
 #[derive(Debug, Clone, Builder)]
 pub struct SubcktBuilder {
-    pub ports: Vec<Span>,
+    pub nodes: Vec<Span>,
     pub cktname: Span,
     pub params: Vec<KeyValueBuilder>,
 }

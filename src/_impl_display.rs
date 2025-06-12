@@ -202,10 +202,10 @@ impl fmt::Display for instance::InstanceCtx<'_> {
             instance::InstanceCtx::Subckt(subckt) => write!(f, "{subckt}"),
             instance::InstanceCtx::Unknown {
                 r#type: _,
-                ports,
+                nodes,
                 params,
             } => {
-                display_inline(f, ports.iter(), Display::fmt, ' ')?;
+                display_inline(f, nodes.iter(), Display::fmt, ' ')?;
                 write!(f, " ")?;
                 display_inline(f, params.iter(), Display::fmt, ' ')
             }
@@ -215,7 +215,7 @@ impl fmt::Display for instance::InstanceCtx<'_> {
 
 impl fmt::Display for instance::Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_inline(f, self.ports.iter(), Display::fmt, ' ')?;
+        display_inline(f, self.nodes.iter(), Display::fmt, ' ')?;
         write!(f, " {} ", self.cktname,)?;
         display_inline(f, self.params.iter(), Display::fmt, ' ')
     }
