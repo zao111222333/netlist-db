@@ -62,14 +62,17 @@ pub fn display_inline<
     iter: I,
     mut fmt_one: F,
     sep: char,
+    skip_first_sep: bool,
 ) -> fmt::Result {
     let mut iter = iter.into_iter();
-    if let Some(first) = iter.next() {
-        fmt_one(first, f)?;
-        for t in iter {
-            write!(f, "{sep}")?;
-            fmt_one(t, f)?;
+    if skip_first_sep {
+        if let Some(first) = iter.next() {
+            fmt_one(first, f)?;
         }
+    }
+    for t in iter {
+        write!(f, "{sep}")?;
+        fmt_one(t, f)?;
     }
     Ok(())
 }
@@ -142,12 +145,13 @@ impl fmt::Display for ast::ModelType<'_> {
 impl fmt::Display for ast::DataFiles<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_multiline(f, self.files.iter(), |file, f| {
-            write!(f, "+ FILE='{}' ", file.file)?;
+            write!(f, "+ FILE='{}'", file.file)?;
             display_inline(
                 f,
                 file.pname_col_num.iter(),
                 |pname_col_num, f| write!(f, "{}={}", pname_col_num.pname, pname_col_num.col_num),
                 ' ',
+                false,
             )
         })?;
         write!(
@@ -163,14 +167,14 @@ impl fmt::Display for ast::Data<'_> {
         write!(f, ".DATA {}", self.name)?;
         match &self.values {
             ast::DataValues::InlineExpr { params, values } => {
-                write!(f, "\n+ ",)?;
-                display_inline(f, params.iter(), Display::fmt, ' ')?;
+                write!(f, "\n+",)?;
+                display_inline(f, params.iter(), Display::fmt, ' ', false)?;
                 write!(f, " DATAFORM")?;
                 display_wrap(f, values.iter(), Display::fmt, "+ ", ' ', params.len())?;
             }
             ast::DataValues::InlineNum { params, values } => {
-                write!(f, "\n+ ",)?;
-                display_inline(f, params.iter(), Display::fmt, ' ')?;
+                write!(f, "\n+",)?;
+                display_inline(f, params.iter(), Display::fmt, ' ', false)?;
                 display_wrap(
                     f,
                     values.iter(),
@@ -210,9 +214,8 @@ impl fmt::Display for instance::InstanceCtx<'_> {
                 nodes,
                 params,
             } => {
-                display_inline(f, nodes.iter(), Display::fmt, ' ')?;
-                write!(f, " ")?;
-                display_inline(f, params.iter(), Display::fmt, ' ')
+                display_inline(f, nodes.iter(), Display::fmt, ' ', true)?;
+                display_inline(f, params.iter(), Display::fmt, ' ', false)
             }
         }
     }
@@ -220,9 +223,8 @@ impl fmt::Display for instance::InstanceCtx<'_> {
 
 impl fmt::Display for instance::Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_inline(f, self.nodes.iter(), Display::fmt, ' ')?;
-        write!(f, " {} ", self.cktname,)?;
-        display_inline(f, self.params.iter(), Display::fmt, ' ')
+        display_inline(f, self.nodes.iter(), Display::fmt, ' ', true)?;
+        display_inline(f, self.params.iter(), Display::fmt, ' ', false)
     }
 }
 
@@ -242,8 +244,7 @@ impl fmt::Display for instance::VoltageSource<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             instance::VoltageSource::Params(params) => {
-                write!(f, " ")?;
-                display_inline(f, params.iter(), Display::fmt, ' ')
+                display_inline(f, params.iter(), Display::fmt, ' ', false)
             }
             instance::VoltageSource::Value(value) => write!(f, "{value}"),
             instance::VoltageSource::PWL(pwl) => write!(f, "{pwl}"),
@@ -255,8 +256,7 @@ impl fmt::Display for instance::CurrentSource<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             instance::CurrentSource::Params(params) => {
-                write!(f, " ")?;
-                display_inline(f, params.iter(), Display::fmt, ' ')
+                display_inline(f, params.iter(), Display::fmt, ' ', false)
             }
             instance::CurrentSource::Value(value) => write!(f, "{value}"),
             instance::CurrentSource::PWL(pwl) => write!(f, "{pwl}"),
@@ -298,14 +298,14 @@ impl fmt::Display for instance::MOSFET<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {}{} {} ",
+            "{} {} {}{} {}",
             self.nd,
             self.ng,
             self.ns,
             OptionDispaly(&self.nb, |nb, f| write!(f, " {nb}")),
             self.mname,
         )?;
-        display_inline(f, self.params.iter(), Display::fmt, ' ')
+        display_inline(f, self.params.iter(), Display::fmt, ' ', false)
     }
 }
 
@@ -313,21 +313,21 @@ impl fmt::Display for instance::BJT<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {}{} {} ",
+            "{} {} {}{} {}",
             self.nc,
             self.nb,
             self.ne,
             OptionDispaly(&self.ns, |ns, f| write!(f, " {ns}")),
             self.mname,
         )?;
-        display_inline(f, self.params.iter(), Display::fmt, ' ')
+        display_inline(f, self.params.iter(), Display::fmt, ' ', false)
     }
 }
 
 impl fmt::Display for instance::Diode<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {} {} ", self.nplus, self.nminus, self.mname,)?;
-        display_inline(f, self.params.iter(), Display::fmt, ' ')
+        write!(f, "{} {} {}", self.nplus, self.nminus, self.mname,)?;
+        display_inline(f, self.params.iter(), Display::fmt, ' ', false)
     }
 }
 
@@ -340,24 +340,23 @@ impl fmt::Display for ast::Model<'_> {
 
 impl fmt::Display for Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".SUBCKT {} ", self.name,)?;
-        display_inline(f, self.ports.iter(), Display::fmt, ' ')?;
-        write!(f, " ")?;
-        display_inline(f, self.params.iter(), Display::fmt, ' ')?;
+        write!(f, ".SUBCKT {}", self.name,)?;
+        display_inline(f, self.ports.iter(), Display::fmt, ' ', false)?;
+        display_inline(f, self.params.iter(), Display::fmt, ' ', false)?;
         write!(f, "{}\n.ENDS {}", self.ast, self.name)
     }
 }
 
 impl fmt::Display for ast::Unknwon<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{} ", self.cmd)?;
-        display_inline(f, self.tokens.iter(), Display::fmt, ' ')
+        write!(f, ".{}", self.cmd)?;
+        display_inline(f, self.tokens.iter(), Display::fmt, ' ', false)
     }
 }
 impl fmt::Display for ast::General<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{} ", self.cmd)?;
-        display_inline(f, self.tokens.iter(), Display::fmt, ' ')
+        write!(f, ".{}", self.cmd)?;
+        display_inline(f, self.tokens.iter(), Display::fmt, ' ', false)
     }
 }
 

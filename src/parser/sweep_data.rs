@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
@@ -12,7 +13,7 @@ use nom::{
         streaming::tag,
     },
     character::complete::char,
-    combinator::{map, map_res},
+    combinator::{map, map_res, opt},
     multi::many1,
     sequence::preceded,
 };
@@ -32,6 +33,45 @@ pub enum DataType {
 pub struct DataName {
     r#type: DataType,
     name: String,
+}
+
+impl fmt::Display for DataName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}({})",
+            match self.r#type {
+                DataType::V => 'V',
+                DataType::I => 'I',
+                DataType::P => 'P',
+            },
+            self.name
+        )
+    }
+}
+
+impl DataName {
+    #[inline]
+    pub fn new_volt(name: String) -> Self {
+        Self {
+            r#type: DataType::V,
+            name,
+        }
+    }
+    #[inline]
+    pub fn new_current(name: String) -> Self {
+        Self {
+            r#type: DataType::I,
+            name,
+        }
+    }
+    #[inline]
+    pub fn new_param(name: String) -> Self {
+        Self {
+            r#type: DataType::P,
+            name,
+        }
+    }
 }
 
 impl PartialEq for DataName {
@@ -60,12 +100,21 @@ fn data_type(i: LocatedSpan) -> IResult<LocatedSpan, DataType> {
 
 #[inline]
 fn data_name(i: LocatedSpan) -> IResult<LocatedSpan, DataName> {
-    map((data_type, char('('), name_str), |(r#type, _, (n, _))| {
-        DataName {
+    map(
+        (
+            data_type,
+            char('('),
+            (name_str, opt(preceded(char('\n'), name_str))),
+        ),
+        |(r#type, _, ((s1, _), n2))| DataName {
             r#type,
-            name: n.to_owned(),
-        }
-    })
+            name: if let Some((s2, _)) = n2 {
+                format!("{s1}{s2}")
+            } else {
+                s1.to_owned()
+            },
+        },
+    )
     .parse_complete(i)
 }
 #[inline]
