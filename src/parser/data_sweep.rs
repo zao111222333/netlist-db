@@ -1,5 +1,6 @@
 use core::fmt;
 use std::{
+    borrow::Cow,
     collections::HashMap,
     hash::{Hash, Hasher},
     path::PathBuf,
@@ -8,10 +9,7 @@ use std::{
 use nom::{
     IResult, Parser,
     branch::alt,
-    bytes::{
-        complete::{take, take_until},
-        streaming::tag,
-    },
+    bytes::complete::{tag, take, take_until},
     character::complete::char,
     combinator::{map, map_res, opt},
     multi::many1,
@@ -32,7 +30,7 @@ pub enum DataType {
 #[derive(Debug)]
 pub struct DataName {
     r#type: DataType,
-    name: String,
+    name: Cow<'static, str>,
 }
 
 impl fmt::Display for DataName {
@@ -52,21 +50,21 @@ impl fmt::Display for DataName {
 
 impl DataName {
     #[inline]
-    pub fn new_volt(name: String) -> Self {
+    pub fn new_volt(name: Cow<'static, str>) -> Self {
         Self {
             r#type: DataType::V,
             name,
         }
     }
     #[inline]
-    pub fn new_current(name: String) -> Self {
+    pub fn new_current(name: Cow<'static, str>) -> Self {
         Self {
             r#type: DataType::I,
             name,
         }
     }
     #[inline]
-    pub fn new_param(name: String) -> Self {
+    pub fn new_param(name: Cow<'static, str>) -> Self {
         Self {
             r#type: DataType::P,
             name,
@@ -109,10 +107,11 @@ fn data_name(i: LocatedSpan) -> IResult<LocatedSpan, DataName> {
         |(r#type, _, ((s1, _), n2))| DataName {
             r#type,
             name: if let Some((s2, _)) = n2 {
-                format!("{s1}{s2}")
+                s1.to_owned() + s2
             } else {
                 s1.to_owned()
-            },
+            }
+            .into(),
         },
     )
     .parse_complete(i)
@@ -120,19 +119,19 @@ fn data_name(i: LocatedSpan) -> IResult<LocatedSpan, DataName> {
 #[inline]
 fn float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
     map_res(take(13u32), |s: LocatedSpan| {
-        lexical_core::parse(s.fragment().as_bytes())
+        fast_float2::parse(s.fragment().as_bytes())
     })
     .parse_complete(i)
 }
 
-const SWEEP_FLAG: &'static str = "sweep";
-const TERMINATION: &'static str = "$&%#";
+const SWEEP_FLAG: &str = "sweep";
+const TERMINATION: &str = "$&%#";
 
 #[inline]
-pub async fn sweep_data(path: PathBuf) -> Result<HashMap<DataName, Vec<f64>>, ()> {
+pub async fn data_sweep(path: PathBuf) -> Result<HashMap<DataName, Vec<f64>>, ()> {
     match read_to_string(&path).await {
         Ok(s) => {
-            let (_, out) = sweep_data_nom(s.as_str().into()).map_err(|e| {
+            let (_, out) = data_sweep_nom(s.as_str().into()).map_err(|e| {
                 let err: ParseError = e.into();
                 err.report(&mut true, &crate::FileId::Include { path }, &s);
             })?;
@@ -147,7 +146,7 @@ pub async fn sweep_data(path: PathBuf) -> Result<HashMap<DataName, Vec<f64>>, ()
 }
 
 #[inline]
-fn sweep_data_nom(i: LocatedSpan) -> IResult<LocatedSpan, HashMap<DataName, Vec<f64>>> {
+fn data_sweep_nom(i: LocatedSpan) -> IResult<LocatedSpan, HashMap<DataName, Vec<f64>>> {
     map(
         (
             take_until(SWEEP_FLAG),
@@ -199,6 +198,6 @@ async fn sim_sw0() {
         _ = tracing::subscriber::set_global_default(subscriber);
     }
     const DATA: &str = include_str!("../../tests/sim.sw0");
-    _ = dbg!(sweep_data_nom(DATA.into()));
-    _ = dbg!(sweep_data("tests/sim.sw0".into()).await);
+    _ = dbg!(data_sweep_nom(DATA.into()));
+    _ = dbg!(data_sweep("tests/sim.sw0".into()).await);
 }

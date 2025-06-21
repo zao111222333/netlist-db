@@ -1,7 +1,7 @@
 [workspace]
 members = ["pybind", "macros"]
 [workspace.package]
-version = "0.4.2"
+version = "0.4.3"
 edition = "2024"
 license = "MIT"
 authors = ["Junzhuo <zhou@junzhuo.site>"]
@@ -19,7 +19,7 @@ description = "Concurrent/Parallel SPICE (HSPICE) parser, under building."
 pyo3 = { version = "0.25", features = ["abi3-py37"] }
 pyo3-stub-gen = { version ="0.8", default-features = false }
 # pyo3-stub-gen = { path = "../../pyo3-stub-gen-main/pyo3-stub-gen", default-features = false }
-tokio = { version = "1.45", features = ["full"] }
+tokio = { version = "1.45", features = ["fs", "sync", "rt", "rt-multi-thread", "macros", "time"] }
 simple_logger = "5.0.0"
 log = "0.4.25"
 fast-float2 = "0.2.3"
@@ -30,7 +30,6 @@ regex = "1.11"
 thiserror = "2"
 nu-ansi-term = "0.50"
 colored = "3"
-lexical-core = "1.0"
 itertools = "0.14"
 tracing = "0.1.41"
 tracing-subscriber = { version="0.3.0", features=["chrono"] }
@@ -63,7 +62,6 @@ log.workspace = true
 nom.workspace = true
 nom_locate.workspace = true
 regex.workspace = true
-lexical-core.workspace = true
 thiserror.workspace = true
 itertools.workspace = true
 tokio.workspace = true

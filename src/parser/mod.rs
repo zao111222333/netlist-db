@@ -1,8 +1,11 @@
 mod cmds;
+mod data_meas;
+pub use data_meas::*;
+mod data_sweep;
+pub use data_sweep::*;
 mod instance;
 mod manager;
 mod measure;
-mod sweep_data;
 mod utils;
 
 use alloc::sync::Arc;
@@ -11,7 +14,6 @@ use manager::ParseManager;
 use nom::IResult;
 use regex::Regex;
 use std::{collections::HashMap, mem, path::PathBuf, sync::OnceLock};
-pub use sweep_data::*;
 use utils::local_ast;
 
 use super::{
