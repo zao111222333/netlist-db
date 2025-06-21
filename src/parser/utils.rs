@@ -107,7 +107,7 @@ fn unit(i: LocatedSpan) -> IResult<LocatedSpan, Unit> {
 }
 
 #[inline]
-pub(super) fn _float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
+pub(super) fn float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
     match fast_float2::parse_partial(i) {
         Ok((f, pos)) => Ok((i.take_from(pos), f)),
         Err(_) => Err(nom::Err::Error(nom::error::Error::new(i, ErrorKind::Float))),
@@ -116,7 +116,7 @@ pub(super) fn _float(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
 
 #[inline]
 pub(super) fn float_unit(i: LocatedSpan) -> IResult<LocatedSpan, f64> {
-    map((_float, opt(unit)), |(f, u)| match u {
+    map((float, opt(unit)), |(f, u)| match u {
         Some(Unit::Factor(u)) => f * u,
         Some(Unit::DB) => 10.0_f64.powf(f / 20.0),
         None => f,
