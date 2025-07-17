@@ -1,11 +1,10 @@
-use std::{borrow::Cow, collections::HashSet};
-
 use crate::{
     ast::{KeyValueBuilder, ValueBuilder},
     self_builder,
     span::Span,
 };
 use netlist_macros::Builder;
+use std::{borrow::Cow, collections::HashMap};
 
 /// ``` spice
 /// XX1 net48 D VDD VNW PHVT11LL_CKT W=0.22u L=40.00n
@@ -36,28 +35,49 @@ pub enum InstanceCtxBuilder {
     },
 }
 impl<'s> InstanceCtx<'s> {
-    pub fn append_nodes<'a>(&'a self, nodes: &mut HashSet<&'a Cow<'s, str>>) {
+    pub fn append_nodes<'a>(&'a self, nodes: &mut HashMap<String, &'a Cow<'s, str>>) {
         match self {
-            InstanceCtx::Resistor(r) => nodes.extend([&r.n1, &r.n2]),
-            InstanceCtx::Capacitor(c) => nodes.extend([&c.n1, &c.n2]),
-            InstanceCtx::Inductor(i) => nodes.extend([&i.n1, &i.n2]),
-            InstanceCtx::Voltage(v) => nodes.extend([&v.n1, &v.n2]),
-            InstanceCtx::Current(c) => nodes.extend([&c.n1, &c.n2]),
+            InstanceCtx::Resistor(r) => {
+                nodes.extend([(r.n1.to_lowercase(), &r.n1), (r.n2.to_lowercase(), &r.n2)])
+            }
+            InstanceCtx::Capacitor(c) => {
+                nodes.extend([(c.n1.to_lowercase(), &c.n1), (c.n2.to_lowercase(), &c.n2)])
+            }
+            InstanceCtx::Inductor(i) => {
+                nodes.extend([(i.n1.to_lowercase(), &i.n1), (i.n2.to_lowercase(), &i.n2)])
+            }
+            InstanceCtx::Voltage(v) => {
+                nodes.extend([(v.n1.to_lowercase(), &v.n1), (v.n2.to_lowercase(), &v.n2)])
+            }
+            InstanceCtx::Current(c) => {
+                nodes.extend([(c.n1.to_lowercase(), &c.n1), (c.n2.to_lowercase(), &c.n2)])
+            }
             InstanceCtx::MOSFET(m) => {
-                nodes.extend([&m.ng, &m.nd, &m.ns]);
-                nodes.extend(m.nb.as_ref())
+                nodes.extend([
+                    (m.ng.to_lowercase(), &m.ng),
+                    (m.nd.to_lowercase(), &m.nd),
+                    (m.ns.to_lowercase(), &m.ns),
+                ]);
+                nodes.extend(m.nb.as_ref().map(|s| (s.to_lowercase(), s)))
             }
             InstanceCtx::BJT(b) => {
-                nodes.extend([&b.nb, &b.nc, &b.ne]);
-                nodes.extend(b.ns.as_ref())
+                nodes.extend([
+                    (b.nb.to_lowercase(), &b.nb),
+                    (b.nc.to_lowercase(), &b.nc),
+                    (b.ne.to_lowercase(), &b.ne),
+                ]);
+                nodes.extend(b.ns.as_ref().map(|s| (s.to_lowercase(), s)))
             }
-            InstanceCtx::Diode(d) => nodes.extend([&d.nminus, &d.nplus]),
-            InstanceCtx::Subckt(x) => nodes.extend(x.nodes.iter()),
+            InstanceCtx::Diode(d) => nodes.extend([
+                (d.nminus.to_lowercase(), &d.nminus),
+                (d.nplus.to_lowercase(), &d.nplus),
+            ]),
+            InstanceCtx::Subckt(x) => nodes.extend(x.nodes.iter().map(|s| (s.to_lowercase(), s))),
             InstanceCtx::Unknown {
                 r#type: _,
                 nodes: _nodes,
                 params: _,
-            } => nodes.extend(_nodes.iter()),
+            } => nodes.extend(_nodes.iter().map(|s| (s.to_lowercase(), s))),
         }
     }
 }

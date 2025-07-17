@@ -34,7 +34,6 @@ pub fn ast(
 ) -> IResult<LocatedSpan, ASTBuilder> {
     let mut ast = ASTBuilder::new();
     loop {
-        crate::trace!("\n{:?}", i.fragment());
         let _ast;
         let reason;
         (i, (_ast, reason)) = local_ast(i, &loaded, &manager, &work_dir)?;
@@ -171,28 +170,6 @@ fn error2parsed(file_id: FileId, err: ParseError) -> (Parsed, Files) {
     )
 }
 
-pub async fn parse_top(file_id: FileId) -> (Parsed, Files) {
-    let (manager, done_rx) = ParseManager::new();
-    let parsed_id = match _include(manager.clone(), IndexMap::with_capacity(1), file_id, None).await
-    {
-        Ok(parsed_id) => parsed_id,
-        Err((file_id, e)) => return error2parsed(file_id, e),
-    };
-    manager.wait(done_rx).await;
-    let mut guard = manager.file_storage.lock().await;
-    let file_storage: FileStorage<ASTBuilder> = mem::take(&mut *guard);
-    (
-        Parsed {
-            top_ids: vec![parsed_id],
-            id2idx: file_storage.id2idx,
-            inner: file_storage.parsed,
-        },
-        Files {
-            inner: file_storage.file,
-        },
-    )
-}
-
 pub async fn parse_top_multi<I: Iterator<Item = FileId>>(file_ids: I) -> (Parsed, Files) {
     let (manager, done_rx) = ParseManager::new();
     let handles: Vec<_> = file_ids
@@ -258,9 +235,12 @@ async fn test_top() {
             .finish();
         _ = tracing::subscriber::set_global_default(subscriber);
     }
-    let (parsed, files) = parse_top(FileId::Include {
-        path: PathBuf::from("tests/top.sp"),
-    })
+    let (parsed, files) = parse_top_multi(
+        [FileId::Include {
+            path: PathBuf::from("tests/top.sp"),
+        }]
+        .into_iter(),
+    )
     .await;
     println!("{parsed:?}");
     println!("{files:?}");

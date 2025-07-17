@@ -11,16 +11,16 @@ extern crate alloc;
 pub mod ast;
 pub mod instance;
 pub mod parser;
+pub mod utlis;
 
 pub mod _impl_display;
-mod _impl_hash;
 mod builder;
 mod err;
 mod span;
 
 use alloc::borrow::Cow;
 use ast::ASTBuilder;
-use indexmap::IndexSet;
+use indexmap::IndexMap;
 pub use span::{FileId, ParsedId};
 use std::collections::HashMap;
 
@@ -52,7 +52,7 @@ pub struct Subckt<'s> {
 
 #[derive(Debug, Clone, Default)]
 pub struct AST<'s> {
-    pub subckt: IndexSet<Subckt<'s>>,
+    pub subckt: IndexMap<String, Subckt<'s>>,
     pub instance: Vec<instance::Instance<'s>>,
     pub model: Vec<ast::Model<'s>>,
     pub param: Vec<ast::KeyValue<'s>>,
@@ -164,7 +164,7 @@ impl ast::ASTBuilder {
                 }
             }
             ast.subckt.extend(local_ast.subckt.iter().map(|s| {
-                build_subckt(
+                let subckt = build_subckt(
                     s,
                     has_err,
                     file,
@@ -173,7 +173,8 @@ impl ast::ASTBuilder {
                     files,
                     parsed_id2idx,
                     parsed_inner,
-                )
+                );
+                (subckt.name.to_lowercase(), subckt)
             }));
             ast.instance
                 .extend(local_ast.instance.iter().map(|b| b.build(file)));

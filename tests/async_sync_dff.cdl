@@ -1,0 +1,64 @@
+.SUBCKT ASYNC_SYNC_DFF CLK D1 D2 QN RESETn1 RESETn2 SETn1 SETn2 VDD VSS
+.SUBCKT XOR2x1_ASAP7_75t_R A B VDD VSS Y
+MM11 VSS A net047 VSS nmos_rvt w=162.00n l=20n nfin=6
+MM10 net047 B Y VSS nmos_rvt w=162.00n l=20n nfin=6
+MM9 VSS net036 Y VSS nmos_rvt w=162.00n l=20n nfin=6
+MM0 VSS A net036 VSS nmos_rvt w=81.0n l=20n nfin=3
+MM1 VSS B net036 VSS nmos_rvt w=81.0n l=20n nfin=3
+MM4 VDD A net019 VDD pmos_rvt w=162.00n l=20n nfin=6
+MM5 VDD B net019 VDD pmos_rvt w=162.00n l=20n nfin=6
+MM6 net019 net036 Y VDD pmos_rvt w=162.00n l=20n nfin=6
+MM2 net048 B net036 VDD pmos_rvt w=81.0n l=20n nfin=3
+MM3 VDD A net048 VDD pmos_rvt w=81.0n l=20n nfin=3
+.ENDS
+.SUBCKT NAND2x1_ASAP7_75t_R A B VDD VSS Y
+MM3 net16 A VSS VSS nmos_rvt w=162.00n l=20n nfin=6
+MM2 Y B net16 VSS nmos_rvt w=162.00n l=20n nfin=6
+MM1 Y B VDD VDD pmos_rvt w=81.0n l=20n nfin=3
+MM0 Y A VDD VDD pmos_rvt w=81.0n l=20n nfin=3
+.ENDS
+.SUBCKT NOR2x1_ASAP7_75t_R A B VDD VSS Y
+MM2 VSS A Y VSS nmos_rvt w=81.0n l=20n nfin=3
+MM1 VSS B Y VSS nmos_rvt w=81.0n l=20n nfin=3
+MM4 net16 B Y VDD pmos_rvt w=162.00n l=20n nfin=6
+MM3 VDD A net16 VDD pmos_rvt w=162.00n l=20n nfin=6
+.ENDS
+.SUBCKT DFFASRHQNx1_ASAP7_75t_R CLK D QN RESETn SETn VDD VSS
+MM20 clkb CLK VSS VSS nmos_rvt w=54.0n l=20n nfin=2
+MM23 clkn clkb VSS VSS nmos_rvt w=54.0n l=20n nfin=2
+MM24 QN SH VSS VSS nmos_rvt w=81.0n l=20n nfin=3
+MM12 MS clkn SH VSS nmos_rvt w=27.0n l=20n nfin=1
+MM4 MH clkb pd1 VSS nmos_rvt w=81.0n l=20n nfin=3
+MM7 net55 MH MS VSS nmos_rvt w=54.0n l=20n nfin=2
+MM15 net54 SH SS VSS nmos_rvt w=54.0n l=20n nfin=2
+MM5 pd1 D VSS VSS nmos_rvt w=81.0n l=20n nfin=3
+MM46 VSS SETn net55 VSS nmos_rvt w=54.0n l=20n nfin=2
+MM27 VSS RESETn net54 VSS nmos_rvt w=54.0n l=20n nfin=2
+MM9 MH clkn net59 VSS nmos_rvt w=27.0n l=20n nfin=1
+MM28 SH clkb net57 VSS nmos_rvt w=54.0n l=20n nfin=2
+MM0 net58 MS net59 VSS nmos_rvt w=27.0n l=20n nfin=1
+MM18 net56 SS net57 VSS nmos_rvt w=54.0n l=20n nfin=2
+MM2 VSS RESETn net58 VSS nmos_rvt w=27.0n l=20n nfin=1
+MM14 VSS SETn net56 VSS nmos_rvt w=54.0n l=20n nfin=2
+MM21 clkb CLK VDD VDD pmos_rvt w=54.0n l=20n nfin=2
+MM22 clkn clkb VDD VDD pmos_rvt w=54.0n l=20n nfin=2
+MM25 QN SH VDD VDD pmos_rvt w=81.0n l=20n nfin=3
+MM13 MS clkb SH VDD pmos_rvt w=27.0n l=20n nfin=1
+MM3 pu1 D VDD VDD pmos_rvt w=81.0n l=20n nfin=3
+MM47 VDD SETn MS VDD pmos_rvt w=54.0n l=20n nfin=2
+MM6 VDD MH MS VDD pmos_rvt w=27.0n l=20n nfin=1
+MM26 VDD RESETn SS VDD pmos_rvt w=27.0n l=20n nfin=1
+MM19 VDD SH SS VDD pmos_rvt w=27.0n l=20n nfin=1
+MM1 MH clkn pu1 VDD pmos_rvt w=81.0n l=20n nfin=3
+MM8 VDD MS net19 VDD pmos_rvt w=54.0n l=20n nfin=2
+MM11 VDD RESETn net19 VDD pmos_rvt w=54.0n l=20n nfin=2
+MM16 VDD SETn net37 VDD pmos_rvt w=54.0n l=20n nfin=2
+MM17 VDD SS net37 VDD pmos_rvt w=27.0n l=20n nfin=1
+MM10 MH clkb net19 VDD pmos_rvt w=54.0n l=20n nfin=2
+MM29 SH clkn net37 VDD pmos_rvt w=54.0n l=20n nfin=2
+.ENDS
+X1 D1 D2 VDD VSS D XOR2x1_ASAP7_75t_R
+X2 RESETn1 RESETn2 VDD VSS RESETn NAND2x1_ASAP7_75t_R
+X3 SETn1 SETn2 VDD VSS SETn NOR2x1_ASAP7_75t_R
+X4 CLK D QN RESETn SETn VDD VSS DFFASRHQNx1_ASAP7_75t_R
+.ENDS ASYNC_SYNC_DFF

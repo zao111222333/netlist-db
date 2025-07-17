@@ -6,7 +6,18 @@ use super::*;
 pub struct FloatDisplay(pub f64);
 impl fmt::Display for FloatDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{: <12.7e}", self.0)
+        write!(f, "{:.7e}", self.0)
+    }
+}
+
+pub struct TableFloatDisplay(pub f64);
+impl fmt::Display for TableFloatDisplay {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_sign_positive() {
+            write!(f, " {: <13.7e}", self.0)
+        } else {
+            write!(f, "{: <14.7e}", self.0)
+        }
     }
 }
 
@@ -224,6 +235,7 @@ impl fmt::Display for instance::InstanceCtx<'_> {
 impl fmt::Display for instance::Subckt<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_inline(f, self.nodes.iter(), Display::fmt, ' ', true)?;
+        write!(f, " {}", self.cktname)?;
         display_inline(f, self.params.iter(), Display::fmt, ' ', false)
     }
 }
@@ -384,7 +396,7 @@ impl fmt::Display for AST<'_> {
             display_wrap(f, self.param.iter(), Display::fmt, "+ ", ' ', 4)?;
         }
         display_multiline(f, self.model.iter(), Display::fmt)?;
-        display_multiline(f, self.subckt.iter(), Display::fmt)?;
+        display_multiline(f, self.subckt.values(), Display::fmt)?;
         display_multiline(f, self.instance.iter(), Display::fmt)?;
         display_multiline(
             f,

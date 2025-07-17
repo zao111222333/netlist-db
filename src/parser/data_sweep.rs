@@ -21,13 +21,13 @@ use crate::{err::ParseError, span::LocatedSpan};
 
 use super::utils::{name_str, space_newline};
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum DataType {
     V,
     I,
     P,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataName {
     r#type: DataType,
     name: Cow<'static, str>,
