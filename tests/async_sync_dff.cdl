@@ -1,4 +1,3 @@
-.SUBCKT ASYNC_SYNC_DFF CLK D1 D2 QN RESETn1 RESETn2 SETn1 SETn2 VDD VSS
 .SUBCKT XOR2x1_ASAP7_75t_R A B VDD VSS Y
 MM11 VSS A net047 VSS nmos_rvt w=162.00n l=20n nfin=6
 MM10 net047 B Y VSS nmos_rvt w=162.00n l=20n nfin=6
@@ -17,6 +16,7 @@ MM2 Y B net16 VSS nmos_rvt w=162.00n l=20n nfin=6
 MM1 Y B VDD VDD pmos_rvt w=81.0n l=20n nfin=3
 MM0 Y A VDD VDD pmos_rvt w=81.0n l=20n nfin=3
 .ENDS
+.SUBCKT ASYNC_SYNC_DFF CLK D1 D2 QN RESETn1 RESETn2 SETn1 SETn2 VDD VSS
 .SUBCKT NOR2x1_ASAP7_75t_R A B VDD VSS Y
 MM2 VSS A Y VSS nmos_rvt w=81.0n l=20n nfin=3
 MM1 VSS B Y VSS nmos_rvt w=81.0n l=20n nfin=3
