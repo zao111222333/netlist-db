@@ -9,7 +9,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take, take_till, take_while, take_while1},
     character::{char, complete::digit1},
-    combinator::{map, map_res, opt},
+    combinator::{map, map_res, opt, recognize, verify},
     error::ErrorKind,
     multi::{many0, many1},
     sequence::{delimited, preceded},
@@ -143,7 +143,7 @@ fn is_key(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 fn is_name(c: char) -> bool {
-    c.is_alphanumeric() || "/_.+-*^:@".contains(c)
+    c.is_alphanumeric() || "/_.+-*^:@%".contains(c)
 }
 fn is_formula(c: char) -> bool {
     c.is_alphanumeric() || "/_.+-*^:".contains(c)
@@ -225,12 +225,24 @@ pub(super) fn unquote_str(i: LocatedSpan) -> IResult<LocatedSpan, &str> {
 
 #[inline]
 pub(super) fn comment(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    delimited(tag("*"), take_till(|c| c == '\n'), take(1_usize)).parse_complete(i)
+    recognize((alt((tag("*"), tag("$"))), take_till(|c| c == '\n'))).parse_complete(i)
 }
 
 #[inline]
 pub(super) fn comment_space_newline(i: LocatedSpan) -> IResult<LocatedSpan, LocatedSpan> {
-    preceded(many0((space_newline, comment)), space_newline).parse_complete(i)
+    recognize(many0(verify(
+        recognize((
+            space,
+            opt(comment),
+            opt((
+                char('\n'),
+                // continue empty line
+                opt((space, char('+'), space, opt(comment), char('\n'))),
+            )),
+        )),
+        |s| !s.is_empty(),
+    )))
+    .parse_complete(i)
 }
 
 #[inline]
