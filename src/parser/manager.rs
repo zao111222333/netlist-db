@@ -36,7 +36,7 @@ impl ParseManager {
         let manager_clone = self.clone();
 
         // 3. start task
-        tokio::spawn(async move {
+        crate::spawn(async move {
             // waiting for parser done
             fut.await;
             // task_done

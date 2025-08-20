@@ -3,6 +3,7 @@ use std::fmt::Display;
 
 use super::*;
 
+#[derive(Debug, Clone, Copy)]
 pub struct FloatDisplay(pub f64);
 impl fmt::Display for FloatDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

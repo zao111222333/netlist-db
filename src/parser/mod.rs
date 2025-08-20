@@ -175,7 +175,7 @@ pub async fn parse_top_multi<I: Iterator<Item = FileId>>(file_ids: I) -> (Parsed
     let handles: Vec<_> = file_ids
         .into_iter()
         .map(|file_id| {
-            tokio::spawn({
+            crate::spawn({
                 let manager = manager.clone();
                 async move { _include(manager, IndexMap::with_capacity(1), file_id, None).await }
             })
