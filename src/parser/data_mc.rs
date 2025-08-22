@@ -51,10 +51,10 @@ pub async fn data_mc0_variation_csv(path: PathBuf) -> Result<Vec<String>, ()> {
 }
 
 #[tokio::test]
-async fn data_mc0_variation_csv() {
+async fn test_data_mc0_variation_csv() {
     crate::utlis::test::init_logger();
     _ = dbg!(
-        data_csv_mc0_variation_file("tests/sim.mc0.csv".into())
+        data_mc0_variation_csv("tests/sim.mc0.csv".into())
             .await
             .unwrap()
     );
