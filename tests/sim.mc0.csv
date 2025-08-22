@@ -1,0 +1,26 @@
+$DATA1 SOURCE='PrimeSim HSPICE' VERSION='S-2021.09
+$OPTION MEASFORM=3
+$ This file format is subject to change 
+$ The seperator is :@:                  
+$index=1 is a nominal sample in Monte Carlo.
+$option ignore_global_variation = no              
+$option ignore_local_variation = no               
+$option ignore_aging_variation = yes              
+$option ignore_interconnect_variation = no        
+$option ignore_spatial_variation = no   
+$option ignore_variation = no 
+$option sampling_method  = srs                  
+$option normal_limit     =      20.0000       
+$option replicates       =   1      
+$option random_generator = MCG                          
+$option seed             =       1  
+$option stream           =   1      
+$option output_sigma_value =  1     
+$option use_agauss_format = yes     
+$option screening_method = pearson  
+$Global Variable number:       44                               
+$Local Variable number:       36                                
+$Aging Variable number:        0                                
+.TITLE '.title kcell characterization'
+index,par1:@:r1:@:IGNC,par2:@:r2:@:IGNC,par3:@:r3:@:IGNC,par4:@:r4:@:IGNC,par5:@:r5:@:IGNC,par6:@:r6:@:IGNC,par7:@:r7:@:IGNC,par8:@:r8:@:IGNC,par9:@:r9:@:IGNC,par10:@:r10:@:IGNC,par11:@:r11:@:IGNC,par12:@:r12:@:IGNC,par13:@:r13:@:IGNC,par14:@:r14:@:IGNC,par15:@:r15:@:IGNC,par16:@:r16:@:IGNC,par17:@:r17:@:IGNC,par18:@:r18:@:IGNC,par19:@:r19:@:IGNC,par20:@:r20:@:IGNC,par21:@:r21:@:IGNC,par22:@:r22:@:IGNC,par23:@:r23:@:IGNC,par24:@:r24:@:IGNC,par25:@:r25:@:IGNC,par26:@:r26:@:IGNC,par27:@:r27:@:IGNC,par28:@:r28:@:IGNC,par29:@:r29:@:IGNC,par30:@:r30:@:IGNC,par31:@:r31:@:IGNC,par32:@:r32:@:IGNC,par1_io:@:r1_io:@:IGNC,par2_io:@:r2_io:@:IGNC,par7_io:@:r7_io:@:IGNC,par8_io:@:r8_io:@:IGNC,par13_io:@:r13_io:@:IGNC,par14_io:@:r14_io:@:IGNC,par19_io:@:r19_io:@:IGNC,par20_io:@:r20_io:@:IGNC,par1_cap:@:r1_cap:@:IGNC,par2_cap:@:r2_cap:@:IGNC,par1fn_mc_c:@:random_fn_c:@:IGNC,par1fn_mc_io:@:random_fn_io:@:IGNC,x1.mm5.temp1:@:nch_mac:@:plo_tox:@:ILNC,x1.mm8.temp1:@:nch_mac:@:plo_tox:@:ILNC,x1.mm4.temp1:@:pch_mac:@:plo_tox:@:ILNC,x1.mm7.temp1:@:pch_mac:@:plo_tox:@:ILNC,x1.mm9.temp1:@:nch_mac:@:plo_tox:@:ILNC,x1.mm0.temp1:@:pch_mac:@:plo_tox:@:ILNC,x1.mm5.temp2:@:nch_mac:@:plo_dxl:@:ILNC,x1.mm8.temp2:@:nch_mac:@:plo_dxl:@:ILNC,x1.mm4.temp2:@:pch_mac:@:plo_dxl:@:ILNC,x1.mm7.temp2:@:pch_mac:@:plo_dxl:@:ILNC,x1.mm9.temp2:@:nch_mac:@:plo_dxl:@:ILNC,x1.mm0.temp2:@:pch_mac:@:plo_dxl:@:ILNC,x1.mm5.temp3:@:nch_mac:@:plo_dxw:@:ILNC,x1.mm8.temp3:@:nch_mac:@:plo_dxw:@:ILNC,x1.mm4.temp3:@:pch_mac:@:plo_dxw:@:ILNC,x1.mm7.temp3:@:pch_mac:@:plo_dxw:@:ILNC,x1.mm9.temp3:@:nch_mac:@:plo_dxw:@:ILNC,x1.mm0.temp3:@:pch_mac:@:plo_dxw:@:ILNC,x1.mm5.temp4:@:nch_mac:@:parl1:@:ILNC,x1.mm8.temp4:@:nch_mac:@:parl1:@:ILNC,x1.mm4.temp4:@:pch_mac:@:parl1:@:ILNC,x1.mm7.temp4:@:pch_mac:@:parl1:@:ILNC,x1.mm9.temp4:@:nch_mac:@:parl1:@:ILNC,x1.mm0.temp4:@:pch_mac:@:parl1:@:ILNC,x1.mm5.temp5:@:nch_mac:@:parl2:@:ILNC,x1.mm8.temp5:@:nch_mac:@:parl2:@:ILNC,x1.mm4.temp5:@:pch_mac:@:parl2:@:ILNC,x1.mm7.temp5:@:pch_mac:@:parl2:@:ILNC,x1.mm9.temp5:@:nch_mac:@:parl2:@:ILNC,x1.mm0.temp5:@:pch_mac:@:parl2:@:ILNC,x1.mm5.main:@:x1.mm5.nch.28:@:par2fn_mc_c:@:ILNC,x1.mm8.main:@:x1.mm8.nch.35:@:par2fn_mc_c:@:ILNC,x1.mm9.main:@:x1.mm9.nch.35:@:par2fn_mc_c:@:ILNC,x1.mm4.main:@:x1.mm4.pch.21:@:par2fn_mc_c:@:ILNC,x1.mm7.main:@:x1.mm7.pch.35:@:par2fn_mc_c:@:ILNC,x1.mm0.main:@:x1.mm0.pch.35:@:par2fn_mc_c:@:ILNC
+1,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,

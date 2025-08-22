@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use super::utils::{name_str, space, space_newline};
+use super::{utils::{name_str, space, space_newline}, BEGIN_TITLE};
 use crate::{err::ParseError, span::LocatedSpan};
 use nom::{
     IResult, Parser,
@@ -13,7 +13,6 @@ use nom::{
 };
 use tokio::fs::read_to_string;
 
-const BEGIN_TITLE: &str = ".TITLE";
 const FAILED_MEAS: &str = "failed";
 
 #[inline]
