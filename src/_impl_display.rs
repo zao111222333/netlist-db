@@ -359,10 +359,10 @@ pub trait SpiceFmt: Sized {
         t: I,
         f: &mut W,
     ) -> fmt::Result {
-        display_inline(f, t, |t, f| write!(f, "{t}"), ' ', false)
+        display_inline(f, t, |t, f| write!(f, "{t}"), ' ', true)
     }
     fn subckt<W: fmt::Write>(&self, t: &Subckt<'_>, f: &mut W) -> fmt::Result {
-        write!(f, ".SUBCKT {}", t.name)?;
+        write!(f, ".SUBCKT {} ", t.name)?;
         self.ports(t.ports.iter().map(|s| s.borrow()), f)?;
         display_inline(f, t.params.iter(), |t, f| self.key_value(t, f), ' ', false)?;
         self.ast(&t.ast, f)?;
