@@ -3,9 +3,26 @@ mod py;
 #[expect(unused_imports)]
 #[cfg(not(feature = "tracing"))]
 use log::{debug, error, info, trace, warn};
+
 #[expect(unused_imports)]
 #[cfg(feature = "tracing")]
 use tracing::{debug, error, info, trace, warn};
+
+fn spawn<F>(future: F) -> tokio::task::JoinHandle<F::Output>
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    #[cfg(feature = "tracing")]
+    {
+        use tracing::instrument::WithSubscriber;
+        tokio::spawn(future.with_current_subscriber())
+    }
+    #[cfg(not(feature = "tracing"))]
+    {
+        tokio::spawn(future)
+    }
+}
 
 extern crate alloc;
 pub mod ast;

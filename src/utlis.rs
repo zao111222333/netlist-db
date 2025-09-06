@@ -173,6 +173,7 @@ pub(crate) mod test {
         )
         .await;
         let (ast, has_err) = files.build(parsed);
+        assert!(!has_err);
         let mut internal_nodes = Vec::new();
         let mut append_subckts = Vec::new();
         Subckt::append(
