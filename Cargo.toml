@@ -1,7 +1,7 @@
 [workspace]
 members = ["pybind", "macros"]
 [workspace.package]
-version = "0.4.5"
+version = "0.4.6"
 edition = "2024"
 license = "MIT"
 authors = ["Junzhuo <zhou@junzhuo.site>"]
