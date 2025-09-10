@@ -12,4 +12,4 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 [tool.maturin]
-features = ["pyo3/extension-module"]
+features = ["pyo3/extension-module", "pyo3/abi3-py310"]

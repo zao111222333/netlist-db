@@ -8,7 +8,7 @@ permissions:
   contents: write
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: "1.86.0"
+  RUST_VERSION: "1.88.0"
 jobs:
   build:
     name: Build x86_64-unknown-linux-musl
@@ -24,10 +24,9 @@ jobs:
           packages: musl-tools # provides musl-gcc
           version: 1.0
       - name: Build
-        run: cargo build --release --target x86_64-unknown-linux-musl --example parser --features tracing
+        run: cargo build --release --target x86_64-unknown-linux-musl --example parser_multi --features tracing
       - name: Prepare files
         run: |
-          mv target/x86_64-unknown-linux-musl/release/examples/parser examples/parser
           mv target/x86_64-unknown-linux-musl/release/examples/parser_multi examples/parser_multi
           mv tests examples
           mv examples examples_x86_64-unknown-linux-musl
