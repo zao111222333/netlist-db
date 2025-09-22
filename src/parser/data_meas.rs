@@ -1,4 +1,5 @@
-use std::{collections::HashMap, path::PathBuf};
+#![expect(clippy::type_complexity)]
+use std::path::PathBuf;
 
 use super::{
     BEGIN_TITLE,
@@ -14,7 +15,6 @@ use nom::{
     multi::{many1, separated_list1},
     sequence::delimited,
 };
-use tokio::fs::read_to_string;
 
 const FAILED_MEAS: &str = "failed";
 
@@ -28,10 +28,9 @@ fn float(i: LocatedSpan) -> IResult<LocatedSpan, Option<f64>> {
 }
 
 #[inline]
-fn data_meas_csv_nom<'a>(
-    i: LocatedSpan<'a>,
-    data_prefix: Option<&str>,
-) -> IResult<LocatedSpan<'a>, HashMap<String, Vec<Option<f64>>>> {
+fn data_meas_csv_nom(
+    i: LocatedSpan<'_>,
+) -> IResult<LocatedSpan<'_>, (Vec<&str>, Vec<Vec<Option<f64>>>)> {
     map(
         (
             take_until(BEGIN_TITLE),
@@ -47,55 +46,100 @@ fn data_meas_csv_nom<'a>(
             )),
         ),
         |(_, _, _, names, _, _, value_table): (_, _, _, Vec<&str>, _, _, Vec<Vec<Option<f64>>>)| {
-            names
-                .into_iter()
-                .enumerate()
-                .filter_map(|(name_idx, name)| {
-                    if let Some(prefix) = data_prefix {
-                        if !name.starts_with(prefix) {
-                            return None;
-                        }
-                    }
-                    Some((
-                        name.to_owned(),
-                        value_table.iter().map(|values| values[name_idx]).collect(),
-                    ))
-                })
-                .collect()
+            (names, value_table)
         },
     )
     .parse_complete(i)
 }
 
-#[inline]
-pub async fn data_meas_csv(
-    path: PathBuf,
-    data_prefix: Option<&str>,
-) -> Result<HashMap<String, Vec<Option<f64>>>, ()> {
-    match read_to_string(&path).await {
-        Ok(s) => {
-            let (_, out) = data_meas_csv_nom(s.as_str().into(), data_prefix).map_err(|e| {
-                let err: ParseError = e.into();
-                err.report(&mut true, &crate::FileId::Include { path }, &s);
-            })?;
-            Ok(out)
-        }
-        Err(e) => {
-            let err: ParseError = e.into();
-            err.report(&mut true, &crate::FileId::Include { path }, "");
-            Err(())
+pub struct MeasCols<'a> {
+    names: Vec<&'a str>,
+    idx: usize,
+    vt: &'a [Vec<Option<f64>>],
+    prefix: Option<&'a str>,
+}
+
+impl<'a> MeasCols<'a> {
+    pub fn new(
+        names: Vec<&'a str>,
+        value_table: &'a Vec<Vec<Option<f64>>>,
+        data_prefix: Option<&'a str>,
+    ) -> Self {
+        Self {
+            names,
+            idx: 0,
+            vt: value_table,
+            prefix: data_prefix,
         }
     }
 }
 
-#[tokio::test]
-async fn sim_mt0_csv() {
+pub struct Col<'a> {
+    vt: &'a [Vec<Option<f64>>],
+    col: usize,
+    row: usize,
+}
+
+impl<'a> Iterator for MeasCols<'a> {
+    type Item = (&'a str, Col<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.idx < self.names.len() {
+            let i = self.idx;
+            let name = self.names[i];
+            self.idx += 1;
+
+            if let Some(p) = self.prefix {
+                if !name.starts_with(p) {
+                    continue;
+                }
+            }
+
+            return Some((
+                name,
+                Col {
+                    vt: self.vt,
+                    col: i,
+                    row: 0,
+                },
+            ));
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for Col<'a> {
+    type Item = Option<f64>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.row >= self.vt.len() {
+            return None;
+        }
+        let v = self.vt[self.row][self.col]; // Option<f64>: Copy
+        self.row += 1;
+        Some(v)
+    }
+}
+
+#[inline]
+pub fn data_meas_csv(path: PathBuf, s: &str) -> Option<(Vec<&str>, Vec<Vec<Option<f64>>>)> {
+    match data_meas_csv_nom(s.into()) {
+        Ok((_, out)) => Some(out),
+        Err(e) => {
+            let err: ParseError = e.into();
+            err.report(&mut true, &crate::FileId::Include { path }, s);
+            None
+        }
+    }
+}
+
+#[test]
+fn sim_mt0_csv() {
     crate::utlis::test::init_logger();
     const DATA: &str = include_str!("../../tests/sim.mt0.csv");
-    _ = dbg!(data_meas_csv_nom(DATA.into(), None));
-    _ = dbg!(
-        data_meas_csv("tests/sim.mt0.csv".into(), Some("kcell"))
-            .await
-            .unwrap()
-    );
+    let (names, value_table) =
+        data_meas_csv(PathBuf::from("tests/sim.mt0.csv"), DATA.into()).unwrap();
+    for (k, v) in MeasCols::new(names, &value_table, Some("kcell")) {
+        dbg!(k, v.collect::<Vec<_>>());
+    }
 }
