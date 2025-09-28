@@ -64,6 +64,32 @@ pub fn display_wrap<
     Ok(())
 }
 
+pub fn display_inline_res<
+    E: From<fmt::Error>,
+    W: fmt::Write,
+    T,
+    I: Iterator<Item = Result<T, E>>,
+    F: FnMut(T, &mut W) -> fmt::Result,
+>(
+    f: &mut W,
+    iter: I,
+    mut fmt_one: F,
+    sep: char,
+    skip_first_sep: bool,
+) -> Result<(), E> {
+    let mut iter = iter.into_iter();
+    if skip_first_sep {
+        if let Some(first) = iter.next() {
+            fmt_one(first?, f)?;
+        }
+    }
+    for t in iter {
+        write!(f, "{sep}")?;
+        fmt_one(t?, f)?;
+    }
+    Ok(())
+}
+
 pub fn display_inline<
     W: fmt::Write,
     T,

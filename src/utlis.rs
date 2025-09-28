@@ -1,4 +1,9 @@
-use std::{borrow::Cow, collections::HashMap, iter::once, ops::Deref as _};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    iter::once,
+    ops::Deref as _,
+};
 
 use crate::{Subckt, instance::InstanceCtx};
 use indexmap::IndexMap;
@@ -7,11 +12,15 @@ use itertools::Itertools as _;
 impl<'s> Subckt<'s> {
     pub fn append<'a>(
         cktname: &str,
+        leaf_cells: &HashSet<String>,
         inst_path: &mut Vec<&'a Cow<'s, str>>,
         include_subckts: &mut Vec<&'a IndexMap<String, Self>>,
         internal_nodes: &mut Vec<String>,
         append_subckts: &mut Vec<&'a Self>,
     ) -> Result<(), String> {
+        if leaf_cells.contains(cktname) {
+            return Ok(());
+        }
         for (idx, include) in include_subckts.iter().enumerate().rev() {
             if let Some(ckt) = include.get(&cktname.to_lowercase()) {
                 let mut nodes_map =
@@ -40,6 +49,7 @@ impl<'s> Subckt<'s> {
                         inst_path.push(&inst.name);
                         Self::append(
                             &ckt.cktname,
+                            leaf_cells,
                             inst_path,
                             include_subckts,
                             internal_nodes,
@@ -137,7 +147,7 @@ impl<'s> Subckt<'s> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use std::path::PathBuf;
+    use std::{collections::HashSet, path::PathBuf};
 
     use crate::{FileId, Subckt, parser::parse_top_multi};
 
@@ -178,6 +188,7 @@ pub(crate) mod test {
         let mut append_subckts = Vec::new();
         Subckt::append(
             "ASYNC_SYNC_DFF",
+            &HashSet::new(),
             &mut Vec::new(),
             &mut vec![&ast.subckt],
             &mut internal_nodes,

@@ -17,7 +17,7 @@ description = "Concurrent/Parallel SPICE (HSPICE) parser, under building."
 # polars-arrow = { version = "0.48", default-features = false }
 # pyo3-polars = { version = "0.21", features = ["derive", "lazy"] }
 pyo3 = "0.26"
-pyo3-stub-gen = { version = "0.13", default-features = false }
+pyo3-stub-gen = { version = "0.14", default-features = false }
 # pyo3-stub-gen = { path = "../../pyo3-stub-gen-main/pyo3-stub-gen", default-features = false }
 tokio = { version = "1.47", features = ["fs", "sync", "rt", "rt-multi-thread", "macros", "time"] }
 simple_logger = "5.0.0"

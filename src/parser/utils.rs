@@ -143,7 +143,7 @@ fn is_key(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 fn is_name(c: char) -> bool {
-    c.is_alphanumeric() || "/_.+-*^:@%".contains(c)
+    c.is_alphanumeric() || "/_.+-*^:@%#".contains(c)
 }
 fn is_formula(c: char) -> bool {
     c.is_alphanumeric() || "/_.+-*^:".contains(c)
