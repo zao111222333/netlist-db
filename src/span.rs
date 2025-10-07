@@ -33,7 +33,9 @@ impl Pos {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum FileId {
     Include { path: PathBuf },
     Section { path: PathBuf, section: String },
