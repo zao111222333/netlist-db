@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use pyo3::{
-    Bound, FromPyObject, IntoPyObject, PyAny, PyErr, PyResult, Python, types::PyAnyMethods as _,
-};
+use pyo3::{Borrowed, Bound, FromPyObject, IntoPyObject, PyAny, PyErr, PyResult, Python};
 use pyo3_stub_gen::{PyStubType, TypeInfo};
 
 use crate::FileId;
@@ -30,9 +28,10 @@ impl<'py> IntoPyObject<'py> for FileId {
     }
 }
 
-impl FromPyObject<'_> for FileId {
+impl FromPyObject<'_, '_> for FileId {
+    type Error = PyErr;
     #[inline]
-    fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
+    fn extract(ob: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
         if let Ok(path_section) = ob.extract::<(PathBuf, String)>() {
             return Ok(path_section.into());
         }
