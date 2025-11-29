@@ -143,7 +143,7 @@ fn is_key(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 fn is_name(c: char) -> bool {
-    c.is_alphanumeric() || "/_.+-*^:@%#".contains(c)
+    c.is_alphanumeric() || "/_.+-*^:@%#[]".contains(c)
 }
 fn is_formula(c: char) -> bool {
     c.is_alphanumeric() || "/_.+-*^:".contains(c)
@@ -711,12 +711,12 @@ pub(super) fn local_ast<'a>(
                     }
                     "option" => {
                         let options;
-                        (i, options) = many1(multiline_sep(option)).parse_complete(i)?;
+                        (i, options) = many0(multiline_sep(option)).parse_complete(i)?;
                         ast.option.extend(options);
                     }
                     "param" | "parameter" => {
                         let param;
-                        (i, param) = many1(multiline_sep(key_value)).parse_complete(i)?;
+                        (i, param) = many0(multiline_sep(key_value)).parse_complete(i)?;
                         ast.param.extend(param);
                     }
                     "ic" => {
